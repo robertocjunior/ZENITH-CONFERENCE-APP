@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "ZENITH",
+    "slug": "ZENITH-BASE-APP",
+    "version": "1.0.16",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "platforms": [
+      "android"
+    ],
+    "android": {
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "monochromeImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.robertocjunior.base.zenithwms",
+      "userInterfaceStyle": "automatic",
+      "versionCode": 3,
+      "usesCleartextTraffic": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "535bd6aa-0822-4ed4-96fd-1f6fa570d5dd"
+      }
+    },
+    "owner": "robertocjunior",
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
