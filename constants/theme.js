@@ -2,8 +2,8 @@
 import { Appearance } from 'react-native';
 
 export const lightColors = {
-    primary: '#00529B',
-    secondary: '#00A3E0',
+    primary: '#8BC74B',
+    secondary: '#145734',
     background: '#f0f2f5',
     cardBackground: '#ffffff',
     text: '#333333',
@@ -28,7 +28,7 @@ export const lightColors = {
     correctionBackground: '#fff8e1',
     correctionBorder: '#ffecb3',
     correctionHeader: '#c09b00',
-    LoadingName: '#102E48',
+    LoadingName: '#145734',
     danger_light: '#fde7e9',
     LoadingIcon: require('../assets/icons/loading.png'),
     logo512x512: require('../assets/icons/icon512x512.png'),
@@ -37,8 +37,8 @@ export const lightColors = {
 };
 
 export const darkColors = {
-    primary: '#007bff',
-    secondary: '#00A3E0',
+    primary: '#145734',
+    secondary: '#8BC74B',
     background: '#121212',
     cardBackground: '#313131ff',
     text: '#f0f0f0', // Texto principal mais claro
@@ -64,7 +64,7 @@ export const darkColors = {
     correctionBackground: '#4d452d',
     correctionBorder: '#8c7e5a',
     correctionHeader: '#e0c466',
-    LoadingName: '#24ACE0',
+    LoadingName: '#8BC74B',
     danger_light: '#4d2b30',
     LoadingIcon: require('../assets/icons/loading-dark.png'),
     logo512x512: require('../assets/icons/icon512x512-dark.png'),
