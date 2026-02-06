@@ -100,7 +100,7 @@ const SettingsModal = ({ visible, onClose, onSave, currentApiUrl }) => {
                                     style={styles.input}
                                     value={apiUrl}
                                     onChangeText={setApiUrl}
-                                    placeholder="http://192.168.1.10:3030"
+                                    placeholder="https://zenith.nicocereais.com.br"
                                     placeholderTextColor={colors.textLight}
                                     autoCapitalize="none"
                                     keyboardType="url"
