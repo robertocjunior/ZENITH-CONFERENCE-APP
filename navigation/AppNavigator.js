@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-
+import RomaneioDetailsScreen from '../screens/RomaneioDetailsScreen';
 import LoginScreen from '../screens/LoginScreen';
 import MainScreen from '../screens/MainScreen';
 import LoadingScreen from '../screens/LoadingScreen';
@@ -27,15 +27,19 @@ const AppNavigator = () => {
     return (
         <NavigationContainer>
             <Stack.Navigator
-                cardStyle={{ backgroundColor: colors.background }} 
                 screenOptions={{
                     headerShown: false,
-                    animation: 'fade',
-                    animationDuration: 300,
+                    cardStyle: { backgroundColor: colors.background },
+                    animation: 'fade', // Opcional
                 }}
             >
                 {authStatus === 'loggedIn' ? (
-                    <Stack.Screen name="Main" component={MainScreen} />
+                    // GRUPO DE TELAS DE USUÁRIO LOGADO
+                    // Usamos o Fragment (<> ... </>) para agrupar múltiplas telas
+                    <>
+                        <Stack.Screen name="Main" component={MainScreen} />
+                        <Stack.Screen name="RomaneioDetails" component={RomaneioDetailsScreen} />
+                    </>
                 ) : authStatus === 'authenticating' ? (
                     <Stack.Screen name="Loading" component={LoadingScreen} />
                 ) : (
@@ -52,6 +56,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     }
-})
+});
 
 export default AppNavigator;

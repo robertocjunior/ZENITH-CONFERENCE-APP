@@ -193,3 +193,5 @@ export async function logout() {
 // Rotas genéricas
 export const fetchPermissions = () => authenticatedFetch('/permissions');
 export const fetchRomaneios = (data) => authenticatedFetch('/romaneio', { data });
+export const fetchRomaneioDetails = (numero_fechamento) => 
+    authenticatedFetch('/romaneio-detalhe', { numero_fechamento });

@@ -93,7 +93,17 @@ const MainScreen = ({ navigation }) => {
             <FlatList
                 data={romaneios}
                 keyExtractor={(item) => item.fechamento.toString()}
-                renderItem={({ item }) => <RomaneioCard item={item} />}
+                renderItem={({ item }) => (
+                    <RomaneioCard 
+                        item={item} 
+                        // ADICIONADO: Navegação para a tela de detalhes enviando o ID
+                        onPress={(selectedItem) => {
+                            navigation.navigate('RomaneioDetails', { 
+                                romaneioId: selectedItem.fechamento 
+                            });
+                        }} 
+                    />
+                )}
                 contentContainerStyle={styles.listContent}
                 ListEmptyComponent={
                     !loading && <Text style={styles.emptyText}>Busque por uma data para listar romaneios.</Text>
