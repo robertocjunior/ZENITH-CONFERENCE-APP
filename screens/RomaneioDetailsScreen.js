@@ -202,7 +202,7 @@ const getStyles = (colors) => StyleSheet.create({
     romaneioBig: {
         fontSize: 28,
         fontWeight: '900',
-        color: colors.primary,
+        color: colors.text,
     },
     dateBadge: {
         flexDirection: 'row',

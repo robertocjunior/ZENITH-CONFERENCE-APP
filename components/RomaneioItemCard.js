@@ -118,7 +118,7 @@ const getStyles = (colors) => StyleSheet.create({
     qtyValue: {
         fontSize: 26,
         fontWeight: 'bold',
-        color: colors.primary, // Usa a cor primária para chamar atenção
+        color: colors.text, // Usa a cor primária para chamar atenção
         lineHeight: 30,
     },
     qtyUnit: {

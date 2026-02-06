@@ -64,7 +64,7 @@ const MainScreen = ({ navigation }) => {
             
             <View style={styles.header}>
                 <View style={styles.headerContent}>
-                    <Text style={styles.headerTitle}>Zenith Base</Text>
+                    <Text style={styles.headerTitle}>Zenith Conferente</Text>
                     <AnimatedButton onPress={() => setPanelVisible(true)}>
                         <Ionicons name="person-circle-outline" size={32} color={colors.white} />
                     </AnimatedButton>
