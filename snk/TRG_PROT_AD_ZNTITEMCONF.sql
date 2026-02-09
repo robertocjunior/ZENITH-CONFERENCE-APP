@@ -4,31 +4,29 @@ FOR EACH ROW
 DECLARE
     V_CONFERIDO_CAB VARCHAR2(1);
 BEGIN
-    -- 1. Impede qualquer exclusão de item
+    -- Permite o DELETE apenas se o item não estiver conferido
     IF DELETING THEN
-        RAISE_APPLICATION_ERROR(-20003, 'Não é permitido excluir itens de conferência. Eles são sincronizados automaticamente.');
+        IF :OLD.CONFERIDO = 'S' THEN
+            RAISE_APPLICATION_ERROR(-20003, 'Não é permitido excluir itens já conferidos.');
+        END IF;
     END IF;
 
-    -- 2. Regras para Atualização
     IF UPDATING THEN
-        -- Validação A: Impede alteração se o item individual já estiver conferido
+        -- Bloqueia se o item já estiver conferido
         IF :OLD.CONFERIDO = 'S' THEN
-            RAISE_APPLICATION_ERROR(-20004, 'Este item já foi conferido individualmente e não permite mais alterações.');
+            RAISE_APPLICATION_ERROR(-20004, 'Este item já foi conferido e não permite mais alterações.');
         END IF;
 
-        -- Validação B: Busca o status do cabeçalho
+        -- Bloqueia se o CABEÇALHO já estiver conferido (S)
         BEGIN
             SELECT CONFERIDO INTO V_CONFERIDO_CAB
             FROM AD_ZNTCONFCAB
             WHERE NUUNICO = :OLD.NUUNICO;
             
             IF NVL(V_CONFERIDO_CAB, 'N') = 'S' THEN
-                RAISE_APPLICATION_ERROR(-20005, 'Este fechamento já foi finalizado no cabeçalho. Não é possível alterar nenhum item deste grupo.');
+                RAISE_APPLICATION_ERROR(-20005, 'O cabeçalho deste grupo já está finalizado.');
             END IF;
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                NULL; -- Se o cabeçalho não existir, permite prosseguir (evita travamento)
+        EXCEPTION WHEN NO_DATA_FOUND THEN NULL;
         END;
     END IF;
 END;
-/
