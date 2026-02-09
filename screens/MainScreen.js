@@ -1,5 +1,7 @@
-import React, { useState, useCallback } from 'react';
+// screens/MainScreen.js
+import React, { useState, useCallback, useEffect } from 'react'; // Adicionado useEffect
 import { View, Text, StyleSheet, TextInput, FlatList, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // IMPORTANTE: Importar AsyncStorage
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { SIZES } from '../constants/theme';
@@ -11,6 +13,8 @@ import AnimatedButton from '../components/common/AnimatedButton';
 import RomaneioCard from '../components/RomaneioCard';
 import { fetchRomaneios } from '../api';
 
+const LAST_SEARCH_KEY = '@zenith_last_search_date';
+
 const MainScreen = ({ navigation }) => {
     const { logout } = useAuth();
     const { colors } = useTheme();
@@ -21,13 +25,29 @@ const MainScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(false);
     const [romaneios, setRomaneios] = useState([]);
 
+    // 1. Efeito para carregar a última busca ao iniciar
+    useEffect(() => {
+        const loadLastSearch = async () => {
+            try {
+                const savedDate = await AsyncStorage.getItem(LAST_SEARCH_KEY);
+                if (savedDate) {
+                    setDateInput(savedDate); // Preenche o campo visualmente
+                    performSearch(savedDate); // Executa a busca com a data salva
+                }
+            } catch (error) {
+                console.log("Erro ao recuperar última busca:", error);
+            }
+        };
+
+        loadLastSearch();
+    }, []);
+
     const handleLogout = () => {
         setPanelVisible(false);
         logout();
     };
 
     const formatDataInput = (text) => {
-        // Remove tudo que não é dígito
         const cleaned = text.replace(/\D/g, '');
         let formatted = cleaned;
         if (cleaned.length > 2) formatted = `${cleaned.substring(0, 2)}/${cleaned.substring(2)}`;
@@ -35,17 +55,31 @@ const MainScreen = ({ navigation }) => {
         setDateInput(formatted);
     };
 
-    const handleSearch = async () => {
-        if (dateInput.length !== 10) return;
+    // Função auxiliar para realizar a busca (reutilizável)
+    const performSearch = async (dateToSearch) => {
         setLoading(true);
         try {
-            const data = await fetchRomaneios(dateInput);
+            const data = await fetchRomaneios(dateToSearch);
             setRomaneios(data || []);
         } catch (error) {
             console.error(error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSearch = async () => {
+        if (dateInput.length !== 10) return;
+        
+        // 2. Salva a data atual no armazenamento antes de buscar
+        try {
+            await AsyncStorage.setItem(LAST_SEARCH_KEY, dateInput);
+        } catch (e) {
+            console.warn("Falha ao salvar histórico de busca");
+        }
+
+        // Chama a função de busca
+        performSearch(dateInput);
     };
 
     useFocusEffect(
@@ -64,7 +98,7 @@ const MainScreen = ({ navigation }) => {
             
             <View style={styles.header}>
                 <View style={styles.headerContent}>
-                    <Text style={styles.headerTitle}>Zenith Conferente</Text>
+                    <Text style={styles.headerTitle}>Zenith Base</Text>
                     <AnimatedButton onPress={() => setPanelVisible(true)}>
                         <Ionicons name="person-circle-outline" size={32} color={colors.white} />
                     </AnimatedButton>
@@ -96,7 +130,6 @@ const MainScreen = ({ navigation }) => {
                 renderItem={({ item }) => (
                     <RomaneioCard 
                         item={item} 
-                        // ADICIONADO: Navegação para a tela de detalhes enviando o ID
                         onPress={(selectedItem) => {
                             navigation.navigate('RomaneioDetails', { 
                                 romaneioId: selectedItem.fechamento 
