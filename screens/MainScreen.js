@@ -1,7 +1,7 @@
 // screens/MainScreen.js
-import React, { useState, useCallback, useEffect } from 'react'; // Adicionado useEffect
-import { View, Text, StyleSheet, TextInput, FlatList, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // IMPORTANTE: Importar AsyncStorage
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, FlatList, ActivityIndicator, Keyboard } from 'react-native'; // 1. Importado Keyboard
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { SIZES } from '../constants/theme';
@@ -25,14 +25,13 @@ const MainScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(false);
     const [romaneios, setRomaneios] = useState([]);
 
-    // 1. Efeito para carregar a última busca ao iniciar
     useEffect(() => {
         const loadLastSearch = async () => {
             try {
                 const savedDate = await AsyncStorage.getItem(LAST_SEARCH_KEY);
                 if (savedDate) {
-                    setDateInput(savedDate); // Preenche o campo visualmente
-                    performSearch(savedDate); // Executa a busca com a data salva
+                    setDateInput(savedDate);
+                    performSearch(savedDate);
                 }
             } catch (error) {
                 console.log("Erro ao recuperar última busca:", error);
@@ -55,7 +54,6 @@ const MainScreen = ({ navigation }) => {
         setDateInput(formatted);
     };
 
-    // Função auxiliar para realizar a busca (reutilizável)
     const performSearch = async (dateToSearch) => {
         setLoading(true);
         try {
@@ -71,14 +69,15 @@ const MainScreen = ({ navigation }) => {
     const handleSearch = async () => {
         if (dateInput.length !== 10) return;
         
-        // 2. Salva a data atual no armazenamento antes de buscar
+        // 2. Fecha o teclado ao iniciar a busca
+        Keyboard.dismiss();
+
         try {
             await AsyncStorage.setItem(LAST_SEARCH_KEY, dateInput);
         } catch (e) {
             console.warn("Falha ao salvar histórico de busca");
         }
 
-        // Chama a função de busca
         performSearch(dateInput);
     };
 
@@ -113,6 +112,7 @@ const MainScreen = ({ navigation }) => {
                         maxLength={10}
                         value={dateInput}
                         onChangeText={formatDataInput}
+                        onSubmitEditing={handleSearch} // Permite buscar ao dar "Enter" no teclado
                     />
                     <AnimatedButton style={styles.searchButton} onPress={handleSearch}>
                         {loading ? (
