@@ -62,16 +62,21 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         );
     }
 
-    // Separação dos itens por Tipo (Própria vs Terceiros)
-    const notasProprias = details.produtos.filter(p => p.tipo === 'O');
-    const notasTerceiros = details.produtos.filter(p => p.tipo !== 'O');
+    // 1. Separa GLOBALMENTE o que já está conferido do que está pendente
+    const todosItens = details.produtos || [];
+    const itensConferidos = todosItens.filter(p => p.conferido === 'S');
+    const itensPendentes = todosItens.filter(p => p.conferido !== 'S');
+
+    // 2. Nos pendentes, separa por tipo para exibição organizada
+    const pendentesProprias = itensPendentes.filter(p => p.tipo === 'O');
+    const pendentesTerceiros = itensPendentes.filter(p => p.tipo !== 'O');
 
     // Verifica se o status do romaneio é "E" (Em conferência)
     const isStatusE = details.status_conf === 'E';
 
     return (
         <View style={styles.container}>
-            {/* Header Fixo com Botão Voltar */}
+            {/* Header Fixo */}
             <View style={styles.navHeader}>
                 <AnimatedButton onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color={colors.white} />
@@ -81,7 +86,7 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 
-                {/* Cartão de Resumo (Topo) com Lógica de Status E */}
+                {/* Cartão de Resumo */}
                 <View style={[styles.summaryCard, isStatusE && styles.summaryCardStatusE]}>
                     <View style={styles.summaryRow}>
                         <View>
@@ -96,7 +101,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
                     <View style={styles.divider} />
 
-                    {/* Informações Padrão */}
                     <View style={styles.infoRow}>
                         <Ionicons name="person" size={16} color={colors.textLight} />
                         <Text style={styles.infoText}>{details.motorista}</Text>
@@ -106,7 +110,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                         <Text style={styles.infoText}>{details.veiculo}</Text>
                     </View>
 
-                    {/* SEÇÃO EXTRA: Informações do Usuário (Apenas se Status E) */}
                     {isStatusE && (
                         <View style={styles.userInfoContainer}>
                             <View style={styles.userBadge}>
@@ -135,27 +138,50 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     </View>
                 </View>
 
-                {/* Seção Notas Próprias */}
-                {notasProprias.length > 0 && (
+                {/* --- SEÇÃO DE PENDENTES --- */}
+                
+                {pendentesProprias.length > 0 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Notas Próprias</Text>
-                        {notasProprias.map((item, index) => (
+                        {pendentesProprias.map((item, index) => (
                             <RomaneioItemCard key={`propria-${index}`} item={item} />
                         ))}
                     </View>
                 )}
 
-                {/* Seção Notas de Terceiros */}
-                {notasTerceiros.length > 0 && (
+                {pendentesTerceiros.length > 0 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Notas de Terceiros</Text>
-                        {notasTerceiros.map((item, index) => (
+                        {pendentesTerceiros.map((item, index) => (
                             <RomaneioItemCard key={`terceiro-${index}`} item={item} />
                         ))}
                     </View>
                 )}
 
-                <View style={{ height: 40 }} />
+                {/* --- BARRA SEPARADORA E SEÇÃO DE CONFERIDOS --- */}
+                
+                {itensConferidos.length > 0 && (
+                    <View style={styles.conferidosWrapper}>
+                        {/* Barra Separadora */}
+                        <View style={styles.conferidosBar}>
+                            <View style={styles.barLine} />
+                            <View style={styles.barBadge}>
+                                <Ionicons name="checkmark-done-circle" size={18} color={colors.white} />
+                                <Text style={styles.barText}>JÁ CONFERIDOS</Text>
+                            </View>
+                            <View style={styles.barLine} />
+                        </View>
+
+                        {/* Lista de Itens Conferidos (Misturados Próprios e Terceiros) */}
+                        <View style={styles.section}>
+                            {itensConferidos.map((item, index) => (
+                                <RomaneioItemCard key={`conferido-${index}`} item={item} />
+                            ))}
+                        </View>
+                    </View>
+                )}
+
+                <View style={{ height: 60 }} />
             </ScrollView>
         </View>
     );
@@ -205,7 +231,6 @@ const getStyles = (colors) => StyleSheet.create({
         borderWidth: 1,
         borderColor: colors.border,
     },
-    // Estilo condicional para Status E (Lilás)
     summaryCardStatusE: {
         backgroundColor: colors.cardStatusEBackground,
         borderColor: colors.cardStatusEBorder,
@@ -255,7 +280,6 @@ const getStyles = (colors) => StyleSheet.create({
         color: colors.text,
         fontWeight: '500',
     },
-    // Estilos da info de usuário (Status E)
     userInfoContainer: {
         backgroundColor: 'rgba(0,0,0,0.05)',
         padding: 10,
@@ -331,6 +355,37 @@ const getStyles = (colors) => StyleSheet.create({
     retryText: {
         color: colors.white,
         fontWeight: 'bold',
+    },
+    // Novos estilos para a Barra de Conferidos
+    conferidosWrapper: {
+        marginTop: 10,
+    },
+    conferidosBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+        gap: 10,
+    },
+    barLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: colors.success, // Usa a cor de sucesso para a linha
+        opacity: 0.5,
+    },
+    barBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.success,
+        paddingVertical: 6,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        gap: 8,
+    },
+    barText: {
+        color: colors.white,
+        fontSize: 12,
+        fontWeight: 'bold',
+        letterSpacing: 1,
     }
 });
 
