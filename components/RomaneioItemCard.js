@@ -1,3 +1,4 @@
+// components/RomaneioItemCard.js
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
@@ -10,14 +11,25 @@ const RomaneioItemCard = ({ item }) => {
 
     const formatPeso = (val) => val ? `${val.toString().replace('.', ',')} kg` : '-';
 
+    // Verifica se o item já foi conferido
+    const isConferido = item.conferido === 'S';
+
     return (
-        <View style={styles.card}>
+        <View style={[styles.card, isConferido && styles.cardConferido]}>
             <View style={styles.mainRow}>
                 {/* COLUNA DA ESQUERDA: Informações do Produto */}
                 <View style={styles.infoContainer}>
                     <View style={styles.headerBadges}>
                         <Text style={styles.codeBadge}>{item.codigo_produto}</Text>
                         <Text style={styles.dunText}>DUN: {item.codigo_barras_4_digitos}</Text>
+                        
+                        {/* Badge extra se estiver conferido */}
+                        {isConferido && (
+                            <View style={styles.conferidoBadge}>
+                                <Ionicons name="checkmark-circle" size={12} color={colors.white} />
+                                <Text style={styles.conferidoText}>OK</Text>
+                            </View>
+                        )}
                     </View>
 
                     <Text style={styles.description}>{item.descricao}</Text>
@@ -36,7 +48,7 @@ const RomaneioItemCard = ({ item }) => {
             </View>
 
             {/* RODAPÉ: Peso Bruto */}
-            <View style={styles.footer}>
+            <View style={[styles.footer, isConferido && styles.footerConferido]}>
                 <View style={styles.weightBox}>
                     <Ionicons name="scale-outline" size={14} color={colors.textLight} />
                     <Text style={styles.weightText}>Peso Bruto: {formatPeso(item.peso_bruto)}</Text>
@@ -55,14 +67,18 @@ const getStyles = (colors) => StyleSheet.create({
         borderColor: colors.border,
         overflow: 'hidden',
     },
+    // Estilo para item conferido (Verde)
+    cardConferido: {
+        backgroundColor: colors.cardConferidoBackground,
+        borderColor: colors.cardConferidoBorder,
+    },
     mainRow: {
         flexDirection: 'row',
         padding: 12,
         gap: 10,
     },
-    // Estilos da Coluna de Informação
     infoContainer: {
-        flex: 1, // Ocupa o espaço restante
+        flex: 1,
         justifyContent: 'center',
     },
     headerBadges: {
@@ -84,6 +100,21 @@ const getStyles = (colors) => StyleSheet.create({
         fontSize: 10,
         color: colors.textLight,
     },
+    // Badge OK verde escuro
+    conferidoBadge: {
+        backgroundColor: colors.success,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        gap: 2,
+    },
+    conferidoText: {
+        color: colors.white,
+        fontSize: 10,
+        fontWeight: 'bold',
+    },
     description: {
         fontSize: 15,
         fontWeight: 'bold',
@@ -99,12 +130,10 @@ const getStyles = (colors) => StyleSheet.create({
         color: colors.text,
         fontWeight: '600',
     },
-
-    // Estilos da Coluna de Quantidade (Destaque)
     qtyContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: colors.inputBackground, // Um fundo leve para destacar o bloco
+        backgroundColor: colors.inputBackground,
         paddingHorizontal: 15,
         borderRadius: 8,
         minWidth: 70,
@@ -112,13 +141,13 @@ const getStyles = (colors) => StyleSheet.create({
     qtyLabel: {
         fontSize: 10,
         fontWeight: 'bold',
-        color: colors.textLight,
+        color: colors.text,
         textTransform: 'uppercase',
     },
     qtyValue: {
         fontSize: 26,
         fontWeight: 'bold',
-        color: colors.text, // Usa a cor primária para chamar atenção
+        color: colors.text,
         lineHeight: 30,
     },
     qtyUnit: {
@@ -126,14 +155,17 @@ const getStyles = (colors) => StyleSheet.create({
         fontWeight: '600',
         color: colors.text,
     },
-
-    // Estilos do Rodapé
     footer: {
-        backgroundColor: colors.background, // Fundo ligeiramente diferente
+        backgroundColor: colors.background,
         paddingVertical: 6,
         paddingHorizontal: 12,
         borderTopWidth: 1,
         borderTopColor: colors.border,
+    },
+    // Ajuste da cor do footer quando conferido
+    footerConferido: {
+        backgroundColor: 'rgba(0,0,0,0.05)', // Escurece levemente o fundo verde
+        borderTopColor: colors.cardConferidoBorder,
     },
     weightBox: {
         flexDirection: 'row',

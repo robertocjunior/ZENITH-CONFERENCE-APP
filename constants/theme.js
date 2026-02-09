@@ -20,18 +20,24 @@ export const lightColors = {
     warning: '#ffc107',
     orange: '#fd7e14',
     danger: '#dc3545',
+    
     pickingBackground: '#fffbe6',
     pickingBorder: '#ffe58f',
-    historyBackground: '#f0f8ff',
-    historyBorder: '#d6e8fa',
-    historyHeader: '#4a6a9b',
+    
     correctionBackground: '#fff8e1',
     correctionBorder: '#ffecb3',
     correctionHeader: '#c09b00',
+    
+    // Status E (Romaneio em conferência) - Roxo/Lilás
+    cardStatusEBackground: '#f3e5f5', 
+    cardStatusEBorder: '#ce93d8',
+    
+    // Item Conferido (S) - Verde
+    cardConferidoBackground: '#e8f5e9',
+    cardConferidoBorder: '#a5d6a7',
+
     LoadingName: '#145734',
     danger_light: '#fde7e9',
-    cardStatusEBackground: '#f3e5f5',
-    cardStatusEBorder: '#ce93d8',
     LoadingIcon: require('../assets/icons/loading.png'),
     logo512x512: require('../assets/icons/icon512x512.png'),
     logoName: require('../assets/icons/name.png'),
@@ -43,33 +49,38 @@ export const darkColors = {
     secondary: '#8BC74B',
     background: '#121212',
     cardBackground: '#313131ff',
-    text: '#f0f0f0', // Texto principal mais claro
+    text: '#f0f0f0',
     iconLogin: '#f0f0f0',
     textLight: '#a0a0a0',
-    border: '#444444', // Borda um pouco mais visível
-    inputBackground: '#333333', // Fundo específico para inputs
-    buttonSecondaryBackground: '#444444', // Fundo para botões secundários (ex: Cancelar)
+    border: '#444444',
+    inputBackground: '#333333',
+    buttonSecondaryBackground: '#444444',
     white: '#ffffff',
     black: '#000000',
     headerIcon: '#f0f0f0',
-    //headerIcon: '#333333',
     success: '#28a745',
     info: '#007bff',
     warning: '#ffc107',
     orange: '#fd7e14',
     danger: '#dc3545',
+    
     pickingBackground: '#4d441f',
     pickingBorder: '#8c7b3f',
-    historyBackground: '#2a3b4d',
-    historyBorder: '#4a6a9b',
-    historyHeader: '#6a8bbd',
+    
     correctionBackground: '#4d452d',
     correctionBorder: '#8c7e5a',
     correctionHeader: '#e0c466',
-    LoadingName: '#8BC74B',
-    danger_light: '#4d2b30',
+    
+    // Status E (Dark)
     cardStatusEBackground: '#4d452d',
     cardStatusEBorder: '#8c7e5a',
+
+    // Item Conferido (Dark)
+    cardConferidoBackground: '#1b5e20',
+    cardConferidoBorder: '#2e7d32',
+
+    LoadingName: '#8BC74B',
+    danger_light: '#4d2b30',
     LoadingIcon: require('../assets/icons/loading-dark.png'),
     logo512x512: require('../assets/icons/icon512x512-dark.png'),
     logoName: require('../assets/icons/name-dark.png'),

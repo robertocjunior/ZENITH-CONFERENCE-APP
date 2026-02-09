@@ -13,7 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 const RomaneioDetailsScreen = ({ route, navigation }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
-    const { romaneioId } = route.params; // Recebe o ID da tela anterior
+    const { romaneioId } = route.params;
 
     const [details, setDetails] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -62,9 +62,12 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         );
     }
 
-    // Separação dos itens
+    // Separação dos itens por Tipo (Própria vs Terceiros)
     const notasProprias = details.produtos.filter(p => p.tipo === 'O');
     const notasTerceiros = details.produtos.filter(p => p.tipo !== 'O');
+
+    // Verifica se o status do romaneio é "E" (Em conferência)
+    const isStatusE = details.status_conf === 'E';
 
     return (
         <View style={styles.container}>
@@ -78,8 +81,8 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 
-                {/* Cartão de Resumo (Topo) */}
-                <View style={styles.summaryCard}>
+                {/* Cartão de Resumo (Topo) com Lógica de Status E */}
+                <View style={[styles.summaryCard, isStatusE && styles.summaryCardStatusE]}>
                     <View style={styles.summaryRow}>
                         <View>
                             <Text style={styles.label}>ROMANEIO</Text>
@@ -93,6 +96,7 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
                     <View style={styles.divider} />
 
+                    {/* Informações Padrão */}
                     <View style={styles.infoRow}>
                         <Ionicons name="person" size={16} color={colors.textLight} />
                         <Text style={styles.infoText}>{details.motorista}</Text>
@@ -102,6 +106,19 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                         <Text style={styles.infoText}>{details.veiculo}</Text>
                     </View>
 
+                    {/* SEÇÃO EXTRA: Informações do Usuário (Apenas se Status E) */}
+                    {isStatusE && (
+                        <View style={styles.userInfoContainer}>
+                            <View style={styles.userBadge}>
+                                <Ionicons name="person" size={12} color={colors.white} />
+                                <Text style={styles.userBadgeText}>EM CONFERÊNCIA</Text>
+                            </View>
+                            <Text style={styles.userNameText} numberOfLines={1}>
+                                <Text style={styles.bold}>{details.cod_usuario}</Text> - {details.nome_usuario}
+                            </Text>
+                        </View>
+                    )}
+
                     <View style={styles.statsRow}>
                         <View style={styles.statItem}>
                             <Text style={styles.statLabel}>PLACA</Text>
@@ -109,7 +126,7 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                         </View>
                         <View style={styles.statItem}>
                             <Text style={styles.statLabel}>PESO TOTAL</Text>
-                            <Text style={styles.statValue}>{formatPeso(details.peso_total)}</Text>
+                            <Text style={styles.statValue}>{formatPeso(details.peso)}</Text>
                         </View>
                         <View style={styles.statItem}>
                             <Text style={styles.statLabel}>PALETES</Text>
@@ -155,7 +172,7 @@ const getStyles = (colors) => StyleSheet.create({
     },
     navHeader: {
         backgroundColor: colors.primary,
-        paddingTop: 50, // Status bar area
+        paddingTop: 50,
         paddingBottom: 20,
         paddingHorizontal: 20,
         flexDirection: 'row',
@@ -187,6 +204,12 @@ const getStyles = (colors) => StyleSheet.create({
         shadowRadius: 4,
         borderWidth: 1,
         borderColor: colors.border,
+    },
+    // Estilo condicional para Status E (Lilás)
+    summaryCardStatusE: {
+        backgroundColor: colors.cardStatusEBackground,
+        borderColor: colors.cardStatusEBorder,
+        borderWidth: 1.5,
     },
     summaryRow: {
         flexDirection: 'row',
@@ -232,6 +255,39 @@ const getStyles = (colors) => StyleSheet.create({
         color: colors.text,
         fontWeight: '500',
     },
+    // Estilos da info de usuário (Status E)
+    userInfoContainer: {
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        padding: 10,
+        borderRadius: 8,
+        marginTop: 10,
+        marginBottom: 5,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    userBadge: {
+        backgroundColor: colors.primary,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+        gap: 5,
+    },
+    userBadgeText: {
+        color: colors.white,
+        fontSize: 10,
+        fontWeight: 'bold',
+    },
+    userNameText: {
+        flex: 1,
+        fontSize: 14,
+        color: colors.text,
+    },
+    bold: {
+        fontWeight: 'bold',
+    },
     statsRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -254,7 +310,6 @@ const getStyles = (colors) => StyleSheet.create({
         fontWeight: 'bold',
         color: colors.text,
     },
-    // Estilos das Seções
     section: {
         marginBottom: 20,
     },
