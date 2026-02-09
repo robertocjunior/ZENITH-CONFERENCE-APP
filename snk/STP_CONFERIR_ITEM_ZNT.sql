@@ -8,6 +8,7 @@ CREATE OR REPLACE PROCEDURE "STP_CONFERIR_ITEM_ZNT" (
     FIELD_NUUNICO NUMBER;
     PARAM_DTHCONF DATE;
     V_STATUS_CAB CHAR(1);
+    V_JA_CONFERIDO VARCHAR2(1);
 BEGIN
     -- 1. Obtenção do parâmetro de Data e Hora da tela
     PARAM_DTHCONF := ACT_DTA_PARAM(P_IDSESSAO, 'DTHCONF'); 
@@ -21,16 +22,25 @@ BEGIN
         FIELD_NUMREG  := ACT_INT_FIELD(P_IDSESSAO, I, 'NUMREG');
         FIELD_NUUNICO := ACT_INT_FIELD(P_IDSESSAO, I, 'NUUNICO');
 
-        -- 3. Validação do Status do Cabeçalho
+        -- 3. Validação: Verifica se o item já está conferido
+        SELECT CONFERIDO INTO V_JA_CONFERIDO
+        FROM AD_ZNTITEMCONF
+        WHERE NUMREG = FIELD_NUMREG AND NUUNICO = FIELD_NUUNICO;
+
+        IF NVL(V_JA_CONFERIDO, 'N') = 'S' THEN
+            RAISE_APPLICATION_ERROR(-20102, 'O item ' || FIELD_NUMREG || ' já está conferido e não pode ser processado novamente.');
+        END IF;
+
+        -- 4. Validação do Status do Cabeçalho (Deve ser 'E')
         SELECT STATUS INTO V_STATUS_CAB
         FROM AD_ZNTCONFCAB
         WHERE NUUNICO = FIELD_NUUNICO;
 
         IF NVL(V_STATUS_CAB, ' ') <> 'E' THEN
-            RAISE_APPLICATION_ERROR(-20101, 'O item não pode ser conferido pois o status do fechamento não é "Em Conferência" (E). Verifique o cabeçalho.');
+            RAISE_APPLICATION_ERROR(-20101, 'O item não pode ser conferido pois o status do fechamento não é "Em Conferência" (E).');
         END IF;
 
-        -- 4. Atualiza o registro do item
+        -- 5. Atualiza o registro do item
         UPDATE AD_ZNTITEMCONF
         SET CONFERIDO = 'S',
             DTHCONF   = PARAM_DTHCONF,
@@ -43,4 +53,3 @@ BEGIN
     P_MENSAGEM := 'Itens conferidos com sucesso!';
 
 END;
-/
