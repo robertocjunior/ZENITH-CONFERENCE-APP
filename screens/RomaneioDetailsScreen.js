@@ -2,25 +2,29 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext'; // Importar AuthContext
+import { useAuth } from '../contexts/AuthContext';
 import { SIZES } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchRomaneioDetails, startConferencia } from '../api'; // Importar startConferencia
+import { fetchRomaneioDetails, startConferencia } from '../api';
 import RomaneioItemCard from '../components/RomaneioItemCard';
 import AnimatedButton from '../components/common/AnimatedButton';
+import ConfirmationModal from '../components/modals/ConfirmationModal'; // IMPORTADO
 import * as SystemUI from 'expo-system-ui';
 import { useFocusEffect } from '@react-navigation/native';
 
 const RomaneioDetailsScreen = ({ route, navigation }) => {
     const { colors } = useTheme();
-    const { userSession } = useAuth(); // Obter sessão do usuário
+    const { userSession } = useAuth();
     const styles = getStyles(colors);
     const { romaneioId } = route.params;
 
     const [details, setDetails] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [actionLoading, setActionLoading] = useState(false); // Loading para o botão
+    const [actionLoading, setActionLoading] = useState(false);
+    
+    // Novo estado para controlar o modal
+    const [isConfirmVisible, setConfirmVisible] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -44,15 +48,22 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         }
     };
 
-    const handleStartConference = async () => {
+    // 1. Apenas abre o modal
+    const handleStartConferencePress = () => {
+        setConfirmVisible(true);
+    };
+
+    // 2. Ação real executada ao confirmar no modal
+    const confirmStartConference = async () => {
         try {
-            setActionLoading(true);
-            // Chama a API com o nu_unico do detalhe carregado
+            setActionLoading(true); // O modal vai usar isso para mostrar "Aguarde..."
             await startConferencia(details.nu_unico);
-            // Recarrega os detalhes para atualizar status e usuário
-            await loadDetails();
+            setConfirmVisible(false); // Fecha o modal
+            await loadDetails(); // Recarrega a tela
         } catch (e) {
+            setConfirmVisible(false);
             Alert.alert('Erro', e.message || 'Não foi possível iniciar a conferência.');
+        } finally {
             setActionLoading(false);
         }
     };
@@ -78,26 +89,31 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         );
     }
 
-    // Filtros de Itens
     const todosItens = details.produtos || [];
     const itensConferidos = todosItens.filter(p => p.conferido === 'S');
     const itensPendentes = todosItens.filter(p => p.conferido !== 'S');
     const pendentesProprias = itensPendentes.filter(p => p.tipo === 'O');
     const pendentesTerceiros = itensPendentes.filter(p => p.tipo !== 'O');
 
-    // Lógica de Status e Exibição
     const isStatusD = details.status_conf === 'D';
     const isStatusE = details.status_conf === 'E';
-    
-    // Verifica se o usuário logado é o dono da conferência
-    // userSession.codusu vem do login, details.cod_usuario vem da API do romaneio
+      ''
     const isOwner = userSession?.codusu && details.cod_usuario === userSession.codusu;
-
-    // Cabeçalho some se estiver EM CONFERÊNCIA (E) e for o DONO
     const shouldShowHeader = !isStatusE || (isStatusE && !isOwner);
 
     return (
         <View style={styles.container}>
+            {/* Modal de Confirmação */}
+            <ConfirmationModal
+                visible={isConfirmVisible}
+                title="Iniciar Conferência"
+                message="Deseja realmente iniciar a conferência deste romaneio?"
+                onClose={() => setConfirmVisible(false)}
+                onConfirm={confirmStartConference}
+                isLoading={actionLoading}
+                confirmText="Iniciar"
+            />
+
             <View style={styles.navHeader}>
                 <AnimatedButton onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color={colors.white} />
@@ -107,7 +123,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 
-                {/* Cabeçalho Condicional */}
                 {shouldShowHeader && (
                     <View style={[styles.summaryCard, isStatusE && styles.summaryCardStatusE]}>
                         <View style={styles.summaryRow}>
@@ -159,27 +174,20 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                             </View>
                         </View>
 
-                        {/* Botão Iniciar Conferência (Apenas Status D) */}
+                        {/* Botão Modificado */}
                         {isStatusD && (
                             <AnimatedButton 
                                 style={styles.startButton} 
-                                onPress={handleStartConference}
-                                disabled={actionLoading}
+                                onPress={handleStartConferencePress} // Abre o modal
                             >
-                                {actionLoading ? (
-                                    <ActivityIndicator color={colors.white} />
-                                ) : (
-                                    <>
-                                        <Ionicons name="play-circle-outline" size={24} color={colors.white} />
-                                        <Text style={styles.startButtonText}>INICIAR CONFERÊNCIA</Text>
-                                    </>
-                                )}
+                                <Ionicons name="play-circle-outline" size={24} color={colors.white} />
+                                <Text style={styles.startButtonText}>INICIAR CONFERÊNCIA</Text>
                             </AnimatedButton>
                         )}
                     </View>
                 )}
 
-                {/* --- SEÇÃO DE PENDENTES --- */}
+                {/* Listas de Itens (sem alterações) */}
                 {pendentesProprias.length > 0 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Notas Próprias</Text>
@@ -198,7 +206,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     </View>
                 )}
 
-                {/* --- SEÇÃO DE CONFERIDOS --- */}
                 {itensConferidos.length > 0 && (
                     <View style={styles.conferidosWrapper}>
                         <View style={styles.conferidosBar}>
@@ -370,7 +377,6 @@ const getStyles = (colors) => StyleSheet.create({
         fontWeight: 'bold',
         color: colors.text,
     },
-    // Estilos do botão Iniciar
     startButton: {
         backgroundColor: colors.primary,
         flexDirection: 'row',
