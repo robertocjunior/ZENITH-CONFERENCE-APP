@@ -8,7 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { fetchRomaneioDetails, startConferencia } from '../api';
 import RomaneioItemCard from '../components/RomaneioItemCard';
 import AnimatedButton from '../components/common/AnimatedButton';
-import ConfirmationModal from '../components/modals/ConfirmationModal'; // IMPORTADO
+import ConfirmationModal from '../components/modals/ConfirmationModal';
+import ItemConferenceModal from '../components/modals/ItemConferenceModal'; // IMPORTADO
 import * as SystemUI from 'expo-system-ui';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -23,8 +24,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const [error, setError] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
     
-    // Novo estado para controlar o modal
+    // Modais
     const [isConfirmVisible, setConfirmVisible] = useState(false);
+    const [isItemModalVisible, setItemModalVisible] = useState(false);
+    const [selectedItem, setSelectedItem] = useState(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -48,24 +51,41 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         }
     };
 
-    // 1. Apenas abre o modal
     const handleStartConferencePress = () => {
         setConfirmVisible(true);
     };
 
-    // 2. Ação real executada ao confirmar no modal
     const confirmStartConference = async () => {
         try {
-            setActionLoading(true); // O modal vai usar isso para mostrar "Aguarde..."
+            setActionLoading(true);
             await startConferencia(details.nu_unico);
-            setConfirmVisible(false); // Fecha o modal
-            await loadDetails(); // Recarrega a tela
+            setConfirmVisible(false);
+            await loadDetails();
         } catch (e) {
             setConfirmVisible(false);
             Alert.alert('Erro', e.message || 'Não foi possível iniciar a conferência.');
         } finally {
             setActionLoading(false);
         }
+    };
+
+    // Lógica para clique no item
+    const handleItemPress = (item) => {
+        // Verifica se o usuário é o dono e se está em modo conferência (Status E)
+        // Se shouldShowHeader for false, significa que o modo conferência está ATIVO para este usuário
+        if (!shouldShowHeader && item.conferido !== 'S') {
+            setSelectedItem(item);
+            setItemModalVisible(true);
+        }
+    };
+
+    const handleConfirmItem = async (item) => {
+        // AQUI VIRÁ A CHAMADA PARA CONFERIR O ITEM
+        console.log("Conferir item:", item.num_reg);
+        
+        // Por enquanto apenas fecha o modal
+        setItemModalVisible(false);
+        setSelectedItem(null);
     };
 
     const formatPeso = (val) => val ? `${val.toString().replace('.', ',')} kg` : '-';
@@ -97,13 +117,12 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
     const isStatusD = details.status_conf === 'D';
     const isStatusE = details.status_conf === 'E';
-      ''
+    
     const isOwner = userSession?.codusu && details.cod_usuario === userSession.codusu;
     const shouldShowHeader = !isStatusE || (isStatusE && !isOwner);
 
     return (
         <View style={styles.container}>
-            {/* Modal de Confirmação */}
             <ConfirmationModal
                 visible={isConfirmVisible}
                 title="Iniciar Conferência"
@@ -112,6 +131,14 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                 onConfirm={confirmStartConference}
                 isLoading={actionLoading}
                 confirmText="Iniciar"
+            />
+
+            {/* Modal de Conferência de Item */}
+            <ItemConferenceModal
+                visible={isItemModalVisible}
+                item={selectedItem}
+                onClose={() => setItemModalVisible(false)}
+                onConfirm={handleConfirmItem}
             />
 
             <View style={styles.navHeader}>
@@ -174,11 +201,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                             </View>
                         </View>
 
-                        {/* Botão Modificado */}
                         {isStatusD && (
                             <AnimatedButton 
                                 style={styles.startButton} 
-                                onPress={handleStartConferencePress} // Abre o modal
+                                onPress={handleStartConferencePress}
                             >
                                 <Ionicons name="play-circle-outline" size={24} color={colors.white} />
                                 <Text style={styles.startButtonText}>INICIAR CONFERÊNCIA</Text>
@@ -187,12 +213,15 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     </View>
                 )}
 
-                {/* Listas de Itens (sem alterações) */}
                 {pendentesProprias.length > 0 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Notas Próprias</Text>
                         {pendentesProprias.map((item, index) => (
-                            <RomaneioItemCard key={`propria-${index}`} item={item} />
+                            <RomaneioItemCard 
+                                key={`propria-${index}`} 
+                                item={item}
+                                onPress={handleItemPress} // Passa a função de clique
+                            />
                         ))}
                     </View>
                 )}
@@ -201,7 +230,11 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Notas de Terceiros</Text>
                         {pendentesTerceiros.map((item, index) => (
-                            <RomaneioItemCard key={`terceiro-${index}`} item={item} />
+                            <RomaneioItemCard 
+                                key={`terceiro-${index}`} 
+                                item={item}
+                                onPress={handleItemPress} // Passa a função de clique
+                            />
                         ))}
                     </View>
                 )}
@@ -219,7 +252,11 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
                         <View style={styles.section}>
                             {itensConferidos.map((item, index) => (
-                                <RomaneioItemCard key={`conferido-${index}`} item={item} />
+                                <RomaneioItemCard 
+                                    key={`conferido-${index}`} 
+                                    item={item}
+                                    // Itens conferidos não são clicáveis para conferir novamente
+                                />
                             ))}
                         </View>
                     </View>

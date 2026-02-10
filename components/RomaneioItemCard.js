@@ -4,8 +4,9 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { SIZES } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import AnimatedButton from './common/AnimatedButton'; // Importação adicionada
 
-const RomaneioItemCard = ({ item }) => {
+const RomaneioItemCard = ({ item, onPress }) => { // Adicionado onPress
     const { colors } = useTheme();
     const styles = getStyles(colors);
 
@@ -15,7 +16,12 @@ const RomaneioItemCard = ({ item }) => {
     const isConferido = item.conferido === 'S';
 
     return (
-        <View style={[styles.card, isConferido && styles.cardConferido]}>
+        // Alterado de View para AnimatedButton
+        <AnimatedButton 
+            style={[styles.card, isConferido && styles.cardConferido]}
+            onPress={() => onPress && onPress(item)}
+            disabled={!onPress} // Desabilita o clique se não houver função (ex: não dono)
+        >
             <View style={styles.mainRow}>
                 {/* COLUNA DA ESQUERDA: Informações do Produto */}
                 <View style={styles.infoContainer}>
@@ -54,7 +60,7 @@ const RomaneioItemCard = ({ item }) => {
                     <Text style={styles.weightText}>Peso Bruto: {formatPeso(item.peso_bruto)}</Text>
                 </View>
             </View>
-        </View>
+        </AnimatedButton>
     );
 };
 
@@ -147,7 +153,7 @@ const getStyles = (colors) => StyleSheet.create({
     qtyValue: {
         fontSize: 26,
         fontWeight: 'bold',
-        color: colors.text,
+        color: colors.primary,
         lineHeight: 30,
     },
     qtyUnit: {
