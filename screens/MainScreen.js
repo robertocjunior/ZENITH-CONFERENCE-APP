@@ -1,6 +1,6 @@
 // screens/MainScreen.js
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList, ActivityIndicator, Keyboard } from 'react-native'; // 1. Importado Keyboard
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TextInput, FlatList, ActivityIndicator, Keyboard } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -25,22 +25,6 @@ const MainScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(false);
     const [romaneios, setRomaneios] = useState([]);
 
-    useEffect(() => {
-        const loadLastSearch = async () => {
-            try {
-                const savedDate = await AsyncStorage.getItem(LAST_SEARCH_KEY);
-                if (savedDate) {
-                    setDateInput(savedDate);
-                    performSearch(savedDate);
-                }
-            } catch (error) {
-                console.log("Erro ao recuperar última busca:", error);
-            }
-        };
-
-        loadLastSearch();
-    }, []);
-
     const handleLogout = () => {
         setPanelVisible(false);
         logout();
@@ -54,7 +38,8 @@ const MainScreen = ({ navigation }) => {
         setDateInput(formatted);
     };
 
-    const performSearch = async (dateToSearch) => {
+    // Envolvido em useCallback para ser dependência segura do useFocusEffect
+    const performSearch = useCallback(async (dateToSearch) => {
         setLoading(true);
         try {
             const data = await fetchRomaneios(dateToSearch);
@@ -64,12 +49,11 @@ const MainScreen = ({ navigation }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     const handleSearch = async () => {
         if (dateInput.length !== 10) return;
         
-        // 2. Fecha o teclado ao iniciar a busca
         Keyboard.dismiss();
 
         try {
@@ -81,10 +65,27 @@ const MainScreen = ({ navigation }) => {
         performSearch(dateInput);
     };
 
+    // useFocusEffect roda sempre que a tela ganha foco (inicialmente e ao voltar)
     useFocusEffect(
         useCallback(() => {
+            // Configura cor de fundo
             SystemUI.setBackgroundColorAsync(colors.background);
-        }, [colors])
+
+            // Carrega e executa a última busca
+            const reloadData = async () => {
+                try {
+                    const savedDate = await AsyncStorage.getItem(LAST_SEARCH_KEY);
+                    if (savedDate) {
+                        setDateInput(savedDate); // Garante que o input mostre a data correta
+                        performSearch(savedDate); // Atualiza os dados
+                    }
+                } catch (error) {
+                    console.log("Erro ao recarregar busca:", error);
+                }
+            };
+
+            reloadData();
+        }, [colors, performSearch])
     );
 
     return (
@@ -112,7 +113,7 @@ const MainScreen = ({ navigation }) => {
                         maxLength={10}
                         value={dateInput}
                         onChangeText={formatDataInput}
-                        onSubmitEditing={handleSearch} // Permite buscar ao dar "Enter" no teclado
+                        onSubmitEditing={handleSearch}
                     />
                     <AnimatedButton style={styles.searchButton} onPress={handleSearch}>
                         {loading ? (
