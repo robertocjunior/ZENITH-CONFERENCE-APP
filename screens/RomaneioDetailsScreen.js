@@ -5,11 +5,12 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { SIZES } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchRomaneioDetails, startConferencia } from '../api';
+// IMPORTANTE: Adicionado conferirItem nos imports
+import { fetchRomaneioDetails, startConferencia, conferirItem } from '../api'; 
 import RomaneioItemCard from '../components/RomaneioItemCard';
 import AnimatedButton from '../components/common/AnimatedButton';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
-import ItemConferenceModal from '../components/modals/ItemConferenceModal'; // IMPORTADO
+import ItemConferenceModal from '../components/modals/ItemConferenceModal';
 import * as SystemUI from 'expo-system-ui';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -28,6 +29,9 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const [isConfirmVisible, setConfirmVisible] = useState(false);
     const [isItemModalVisible, setItemModalVisible] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
+    
+    // Estado de loading específico para o modal de item
+    const [itemActionLoading, setItemActionLoading] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -69,23 +73,31 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         }
     };
 
-    // Lógica para clique no item
     const handleItemPress = (item) => {
-        // Verifica se o usuário é o dono e se está em modo conferência (Status E)
-        // Se shouldShowHeader for false, significa que o modo conferência está ATIVO para este usuário
         if (!shouldShowHeader && item.conferido !== 'S') {
             setSelectedItem(item);
             setItemModalVisible(true);
         }
     };
 
+    // --- NOVA LÓGICA DE CONFERÊNCIA DE ITEM ---
     const handleConfirmItem = async (item) => {
-        // AQUI VIRÁ A CHAMADA PARA CONFERIR O ITEM
-        console.log("Conferir item:", item.num_reg);
-        
-        // Por enquanto apenas fecha o modal
-        setItemModalVisible(false);
-        setSelectedItem(null);
+        try {
+            setItemActionLoading(true);
+            
+            // Chama a API passando nu_unico (do cabeçalho) e num_reg (do item)
+            await conferirItem(details.nu_unico, item.num_reg);
+            
+            // Fecha modal e recarrega lista
+            setItemModalVisible(false);
+            setSelectedItem(null);
+            await loadDetails();
+            
+        } catch (e) {
+            Alert.alert('Erro', e.message || 'Falha ao conferir item.');
+        } finally {
+            setItemActionLoading(false);
+        }
     };
 
     const formatPeso = (val) => val ? `${val.toString().replace('.', ',')} kg` : '-';
@@ -133,13 +145,22 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                 confirmText="Iniciar"
             />
 
-            {/* Modal de Conferência de Item */}
+            {/* Modal de Conferência de Item Atualizado */}
             <ItemConferenceModal
                 visible={isItemModalVisible}
                 item={selectedItem}
                 onClose={() => setItemModalVisible(false)}
                 onConfirm={handleConfirmItem}
+                // (Opcional) Você pode passar isLoading para desabilitar o botão enquanto chama a API
+                // Se tiver atualizado o ItemConferenceModal para receber essa prop
+                // isLoading={itemActionLoading} 
             />
+            {/* Loading Overlay opcional se o modal não suportar prop de loading nativa */}
+            {itemActionLoading && (
+                <View style={[styles.loadingOverlay]}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+            )}
 
             <View style={styles.navHeader}>
                 <AnimatedButton onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -220,7 +241,7 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                             <RomaneioItemCard 
                                 key={`propria-${index}`} 
                                 item={item}
-                                onPress={handleItemPress} // Passa a função de clique
+                                onPress={handleItemPress} 
                             />
                         ))}
                     </View>
@@ -233,7 +254,7 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                             <RomaneioItemCard 
                                 key={`terceiro-${index}`} 
                                 item={item}
-                                onPress={handleItemPress} // Passa a função de clique
+                                onPress={handleItemPress} 
                             />
                         ))}
                     </View>
@@ -255,7 +276,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                                 <RomaneioItemCard 
                                     key={`conferido-${index}`} 
                                     item={item}
-                                    // Itens conferidos não são clicáveis para conferir novamente
                                 />
                             ))}
                         </View>
@@ -276,6 +296,14 @@ const getStyles = (colors) => StyleSheet.create({
     center: {
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    loadingOverlay: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 999,
     },
     navHeader: {
         backgroundColor: colors.primary,

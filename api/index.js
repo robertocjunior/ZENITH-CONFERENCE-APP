@@ -203,3 +203,4 @@ export const fetchPermissions = () => authenticatedFetch('/permissions');
 export const fetchRomaneios = (data) => authenticatedFetch('/romaneio', { data });
 export const fetchRomaneioDetails = (numero_fechamento) => authenticatedFetch('/romaneio-detalhe', { numero_fechamento });
 export const startConferencia = (nu_unico) => authenticatedFetch('/iniciar-conferencia', { nu_unico });
+export const conferirItem = (nu_unico, num_reg) => authenticatedFetch('/conferir-item', { nu_unico, num_reg });
