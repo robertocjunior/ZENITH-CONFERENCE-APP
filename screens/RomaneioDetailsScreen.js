@@ -1,10 +1,11 @@
 // screens/RomaneioDetailsScreen.js
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext'; // Importar AuthContext
 import { SIZES } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchRomaneioDetails } from '../api';
+import { fetchRomaneioDetails, startConferencia } from '../api'; // Importar startConferencia
 import RomaneioItemCard from '../components/RomaneioItemCard';
 import AnimatedButton from '../components/common/AnimatedButton';
 import * as SystemUI from 'expo-system-ui';
@@ -12,12 +13,14 @@ import { useFocusEffect } from '@react-navigation/native';
 
 const RomaneioDetailsScreen = ({ route, navigation }) => {
     const { colors } = useTheme();
+    const { userSession } = useAuth(); // Obter sessão do usuário
     const styles = getStyles(colors);
     const { romaneioId } = route.params;
 
     const [details, setDetails] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [actionLoading, setActionLoading] = useState(false); // Loading para o botão
 
     useFocusEffect(
         useCallback(() => {
@@ -41,9 +44,22 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         }
     };
 
+    const handleStartConference = async () => {
+        try {
+            setActionLoading(true);
+            // Chama a API com o nu_unico do detalhe carregado
+            await startConferencia(details.nu_unico);
+            // Recarrega os detalhes para atualizar status e usuário
+            await loadDetails();
+        } catch (e) {
+            Alert.alert('Erro', e.message || 'Não foi possível iniciar a conferência.');
+            setActionLoading(false);
+        }
+    };
+
     const formatPeso = (val) => val ? `${val.toString().replace('.', ',')} kg` : '-';
 
-    if (loading) {
+    if (loading && !details) {
         return (
             <View style={[styles.container, styles.center]}>
                 <ActivityIndicator size="large" color={colors.primary} />
@@ -62,21 +78,26 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         );
     }
 
-    // 1. Separa GLOBALMENTE o que já está conferido do que está pendente
+    // Filtros de Itens
     const todosItens = details.produtos || [];
     const itensConferidos = todosItens.filter(p => p.conferido === 'S');
     const itensPendentes = todosItens.filter(p => p.conferido !== 'S');
-
-    // 2. Nos pendentes, separa por tipo para exibição organizada
     const pendentesProprias = itensPendentes.filter(p => p.tipo === 'O');
     const pendentesTerceiros = itensPendentes.filter(p => p.tipo !== 'O');
 
-    // Verifica se o status do romaneio é "E" (Em conferência)
+    // Lógica de Status e Exibição
+    const isStatusD = details.status_conf === 'D';
     const isStatusE = details.status_conf === 'E';
+    
+    // Verifica se o usuário logado é o dono da conferência
+    // userSession.codusu vem do login, details.cod_usuario vem da API do romaneio
+    const isOwner = userSession?.codusu && details.cod_usuario === userSession.codusu;
+
+    // Cabeçalho some se estiver EM CONFERÊNCIA (E) e for o DONO
+    const shouldShowHeader = !isStatusE || (isStatusE && !isOwner);
 
     return (
         <View style={styles.container}>
-            {/* Header Fixo */}
             <View style={styles.navHeader}>
                 <AnimatedButton onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color={colors.white} />
@@ -86,60 +107,79 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 
-                {/* Cartão de Resumo */}
-                <View style={[styles.summaryCard, isStatusE && styles.summaryCardStatusE]}>
-                    <View style={styles.summaryRow}>
-                        <View>
-                            <Text style={styles.label}>ROMANEIO</Text>
-                            <Text style={styles.romaneioBig}>#{details.fechamento}</Text>
-                        </View>
-                        <View style={styles.dateBadge}>
-                            <Ionicons name="calendar-outline" size={16} color={colors.primary} />
-                            <Text style={styles.dateText}>{details.data}</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.infoRow}>
-                        <Ionicons name="person" size={16} color={colors.textLight} />
-                        <Text style={styles.infoText}>{details.motorista}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                        <Ionicons name="bus" size={16} color={colors.textLight} />
-                        <Text style={styles.infoText}>{details.veiculo}</Text>
-                    </View>
-
-                    {isStatusE && (
-                        <View style={styles.userInfoContainer}>
-                            <View style={styles.userBadge}>
-                                <Ionicons name="person" size={12} color={colors.white} />
-                                <Text style={styles.userBadgeText}>EM CONFERÊNCIA</Text>
+                {/* Cabeçalho Condicional */}
+                {shouldShowHeader && (
+                    <View style={[styles.summaryCard, isStatusE && styles.summaryCardStatusE]}>
+                        <View style={styles.summaryRow}>
+                            <View>
+                                <Text style={styles.label}>ROMANEIO</Text>
+                                <Text style={styles.romaneioBig}>#{details.fechamento}</Text>
                             </View>
-                            <Text style={styles.userNameText} numberOfLines={1}>
-                                <Text style={styles.bold}>{details.cod_usuario}</Text> - {details.nome_usuario}
-                            </Text>
+                            <View style={styles.dateBadge}>
+                                <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+                                <Text style={styles.dateText}>{details.data}</Text>
+                            </View>
                         </View>
-                    )}
 
-                    <View style={styles.statsRow}>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statLabel}>PLACA</Text>
-                            <Text style={styles.statValue}>{details.placa}</Text>
+                        <View style={styles.divider} />
+
+                        <View style={styles.infoRow}>
+                            <Ionicons name="person" size={16} color={colors.textLight} />
+                            <Text style={styles.infoText}>{details.motorista}</Text>
                         </View>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statLabel}>PESO TOTAL</Text>
-                            <Text style={styles.statValue}>{formatPeso(details.peso)}</Text>
+                        <View style={styles.infoRow}>
+                            <Ionicons name="bus" size={16} color={colors.textLight} />
+                            <Text style={styles.infoText}>{details.veiculo}</Text>
                         </View>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statLabel}>PALETES</Text>
-                            <Text style={styles.statValue}>{details.paletes}</Text>
+
+                        {isStatusE && (
+                            <View style={styles.userInfoContainer}>
+                                <View style={styles.userBadge}>
+                                    <Ionicons name="person" size={12} color={colors.white} />
+                                    <Text style={styles.userBadgeText}>EM CONFERÊNCIA</Text>
+                                </View>
+                                <Text style={styles.userNameText} numberOfLines={1}>
+                                    <Text style={styles.bold}>{details.cod_usuario}</Text> - {details.nome_usuario}
+                                </Text>
+                            </View>
+                        )}
+
+                        <View style={styles.statsRow}>
+                            <View style={styles.statItem}>
+                                <Text style={styles.statLabel}>PLACA</Text>
+                                <Text style={styles.statValue}>{details.placa}</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                                <Text style={styles.statLabel}>PESO TOTAL</Text>
+                                <Text style={styles.statValue}>{formatPeso(details.peso)}</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                                <Text style={styles.statLabel}>PALETES</Text>
+                                <Text style={styles.statValue}>{details.paletes}</Text>
+                            </View>
                         </View>
+
+                        {/* Botão Iniciar Conferência (Apenas Status D) */}
+                        {isStatusD && (
+                            <AnimatedButton 
+                                style={styles.startButton} 
+                                onPress={handleStartConference}
+                                disabled={actionLoading}
+                            >
+                                {actionLoading ? (
+                                    <ActivityIndicator color={colors.white} />
+                                ) : (
+                                    <>
+                                        <Ionicons name="play-circle-outline" size={24} color={colors.white} />
+                                        <Text style={styles.startButtonText}>INICIAR CONFERÊNCIA</Text>
+                                    </>
+                                )}
+                            </AnimatedButton>
+                        )}
                     </View>
-                </View>
+                )}
 
                 {/* --- SEÇÃO DE PENDENTES --- */}
-                
                 {pendentesProprias.length > 0 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Notas Próprias</Text>
@@ -158,11 +198,9 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     </View>
                 )}
 
-                {/* --- BARRA SEPARADORA E SEÇÃO DE CONFERIDOS --- */}
-                
+                {/* --- SEÇÃO DE CONFERIDOS --- */}
                 {itensConferidos.length > 0 && (
                     <View style={styles.conferidosWrapper}>
-                        {/* Barra Separadora */}
                         <View style={styles.conferidosBar}>
                             <View style={styles.barLine} />
                             <View style={styles.barBadge}>
@@ -172,7 +210,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                             <View style={styles.barLine} />
                         </View>
 
-                        {/* Lista de Itens Conferidos (Misturados Próprios e Terceiros) */}
                         <View style={styles.section}>
                             {itensConferidos.map((item, index) => (
                                 <RomaneioItemCard key={`conferido-${index}`} item={item} />
@@ -217,7 +254,6 @@ const getStyles = (colors) => StyleSheet.create({
     scrollContent: {
         padding: 15,
     },
-    // Estilos do Cartão de Resumo
     summaryCard: {
         backgroundColor: colors.cardBackground,
         borderRadius: 16,
@@ -334,6 +370,23 @@ const getStyles = (colors) => StyleSheet.create({
         fontWeight: 'bold',
         color: colors.text,
     },
+    // Estilos do botão Iniciar
+    startButton: {
+        backgroundColor: colors.primary,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 15,
+        borderRadius: 12,
+        marginTop: 20,
+        gap: 10,
+        elevation: 2,
+    },
+    startButtonText: {
+        color: colors.white,
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
     section: {
         marginBottom: 20,
     },
@@ -356,7 +409,6 @@ const getStyles = (colors) => StyleSheet.create({
         color: colors.white,
         fontWeight: 'bold',
     },
-    // Novos estilos para a Barra de Conferidos
     conferidosWrapper: {
         marginTop: 10,
     },
@@ -369,7 +421,7 @@ const getStyles = (colors) => StyleSheet.create({
     barLine: {
         flex: 1,
         height: 1,
-        backgroundColor: colors.success, // Usa a cor de sucesso para a linha
+        backgroundColor: colors.success,
         opacity: 0.5,
     },
     barBadge: {

@@ -37,7 +37,10 @@ export const setApiUrl = async (url) => {
 };
 
 async function authenticatedFetch(endpoint, body = {}) {
+    // 1. Recupera ambos os tokens do armazenamento
     const sessionToken = await AsyncStorage.getItem(SESSION_TOKEN_KEY);
+    const snkSessionId = await AsyncStorage.getItem(SNK_SESSION_ID_KEY);
+
     if (!sessionToken) {
         const authError = new Error('Nenhum token de sessão encontrado.');
         authError.reauthRequired = true;
@@ -49,7 +52,12 @@ async function authenticatedFetch(endpoint, body = {}) {
         'X-App-Version': APP_VERSION 
     };
 
+    // 2. Insere os tokens nos headers conforme solicitado
     headers['Authorization'] = `Bearer ${sessionToken}`;
+    
+    if (snkSessionId) {
+        headers['Snkjsessionid'] = snkSessionId;
+    }
 
     // Timeout de 15s
     const controller = new AbortController();
@@ -193,5 +201,5 @@ export async function logout() {
 // Rotas genéricas
 export const fetchPermissions = () => authenticatedFetch('/permissions');
 export const fetchRomaneios = (data) => authenticatedFetch('/romaneio', { data });
-export const fetchRomaneioDetails = (numero_fechamento) => 
-    authenticatedFetch('/romaneio-detalhe', { numero_fechamento });
+export const fetchRomaneioDetails = (numero_fechamento) => authenticatedFetch('/romaneio-detalhe', { numero_fechamento });
+export const startConferencia = (nu_unico) => authenticatedFetch('/iniciar-conferencia', { nu_unico });
