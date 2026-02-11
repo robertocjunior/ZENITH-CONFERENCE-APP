@@ -203,4 +203,26 @@ export const fetchPermissions = () => authenticatedFetch('/permissions');
 export const fetchRomaneios = (data) => authenticatedFetch('/romaneio', { data });
 export const fetchRomaneioDetails = (numero_fechamento) => authenticatedFetch('/romaneio-detalhe', { numero_fechamento });
 export const startConferencia = (nu_unico) => authenticatedFetch('/iniciar-conferencia', { nu_unico });
-export const conferirItem = (nu_unico, num_reg) => authenticatedFetch('/conferir-item', { nu_unico, num_reg });
+export const conferirItem = (nu_unico, num_reg, qtd_embarcada, obs = null) => {
+    // 1. Converte para string para garantir que o replace funcione
+    // 2. Troca vírgula por ponto (caso venha "3,5")
+    // 3. Converte para Number
+    const qtdTratada = Number(String(qtd_embarcada).replace(',', '.'));
+
+    const body = { 
+        nu_unico, 
+        num_reg, 
+        // Se der NaN por algum motivo, envia o original, mas o tratamento acima resolve 99% dos casos
+        qtd_embarcada: isNaN(qtdTratada) ? Number(qtd_embarcada) : qtdTratada 
+    };
+
+    // Adiciona obs apenas se existir e não for string vazia
+    if (obs && obs.trim().length > 0) {
+        body.obs = obs;
+    }
+
+    // Console.log para você ver exatamente o que está sendo enviado no terminal do Metro
+    console.log('[API] Enviando conferência:', JSON.stringify(body));
+
+    return authenticatedFetch('/conferir-item', body);
+};
