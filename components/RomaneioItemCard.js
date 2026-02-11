@@ -4,9 +4,9 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { SIZES } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import AnimatedButton from './common/AnimatedButton'; // Importação adicionada
+import AnimatedButton from './common/AnimatedButton';
 
-const RomaneioItemCard = ({ item, onPress }) => { // Adicionado onPress
+const RomaneioItemCard = ({ item, onPress, isAllConferred, suppressDoneStyle }) => { 
     const { colors } = useTheme();
     const styles = getStyles(colors);
 
@@ -16,11 +16,11 @@ const RomaneioItemCard = ({ item, onPress }) => { // Adicionado onPress
     const isConferido = item.conferido === 'S';
 
     return (
-        // Alterado de View para AnimatedButton
         <AnimatedButton 
-            style={[styles.card, isConferido && styles.cardConferido]}
+            style={[styles.card, (isConferido && !suppressDoneStyle) && styles.cardConferido]}
             onPress={() => onPress && onPress(item)}
-            disabled={!onPress} // Desabilita o clique se não houver função (ex: não dono)
+            // Se tudo estiver conferido, o botão fica habilitado para o clique visual
+            disabled={!isAllConferred && !onPress} 
         >
             <View style={styles.mainRow}>
                 {/* COLUNA DA ESQUERDA: Informações do Produto */}
@@ -54,7 +54,7 @@ const RomaneioItemCard = ({ item, onPress }) => { // Adicionado onPress
             </View>
 
             {/* RODAPÉ: Peso Bruto */}
-            <View style={[styles.footer, isConferido && styles.footerConferido]}>
+            <View style={[styles.footer, (isConferido && !suppressDoneStyle) && styles.footerConferido]}>
                 <View style={styles.weightBox}>
                     <Ionicons name="scale-outline" size={14} color={colors.textLight} />
                     <Text style={styles.weightText}>Peso Bruto: {formatPeso(item.peso_bruto)}</Text>
@@ -73,7 +73,6 @@ const getStyles = (colors) => StyleSheet.create({
         borderColor: colors.border,
         overflow: 'hidden',
     },
-    // Estilo para item conferido (Verde)
     cardConferido: {
         backgroundColor: colors.cardConferidoBackground,
         borderColor: colors.cardConferidoBorder,
@@ -106,7 +105,6 @@ const getStyles = (colors) => StyleSheet.create({
         fontSize: 10,
         color: colors.textLight,
     },
-    // Badge OK verde escuro
     conferidoBadge: {
         backgroundColor: colors.success,
         flexDirection: 'row',
@@ -168,9 +166,8 @@ const getStyles = (colors) => StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: colors.border,
     },
-    // Ajuste da cor do footer quando conferido
     footerConferido: {
-        backgroundColor: 'rgba(0,0,0,0.05)', // Escurece levemente o fundo verde
+        backgroundColor: 'rgba(0,0,0,0.05)',
         borderTopColor: colors.cardConferidoBorder,
     },
     weightBox: {

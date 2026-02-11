@@ -5,13 +5,13 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { SIZES } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context'; 
-import { fetchRomaneioDetails, startConferencia, conferirItem } from '../api'; 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { fetchRomaneioDetails, startConferencia, conferirItem } from '../api';
 import RomaneioItemCard from '../components/RomaneioItemCard';
 import AnimatedButton from '../components/common/AnimatedButton';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import ItemConferenceModal from '../components/modals/ItemConferenceModal';
-import BarcodeScannerModal from '../components/modals/BarcodeScannerModal'; 
+import BarcodeScannerModal from '../components/modals/BarcodeScannerModal';
 import * as SystemUI from 'expo-system-ui';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -20,21 +20,21 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const { userSession } = useAuth();
     const styles = getStyles(colors);
     const { romaneioId } = route.params;
-    
-    const insets = useSafeAreaInsets(); 
+
+    const insets = useSafeAreaInsets();
 
     const [details, setDetails] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
-    
+
     const [searchText, setSearchText] = useState('');
 
     const [isConfirmVisible, setConfirmVisible] = useState(false);
     const [isItemModalVisible, setItemModalVisible] = useState(false);
     const [isScannerVisible, setScannerVisible] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
-    
+
     const [itemActionLoading, setItemActionLoading] = useState(false);
 
     useFocusEffect(
@@ -93,7 +93,7 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
             await conferirItem(details.nu_unico, item.num_reg, qtd_embarcada, obs);
             setItemModalVisible(false);
             setSelectedItem(null);
-            
+
             setSearchText('');
             Keyboard.dismiss();
 
@@ -132,10 +132,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         if (!searchText) return items;
 
         const searchTerms = normalizeText(searchText).split(' ').filter(t => t.length > 0);
-        
+
         return items.filter(item => {
-            const listaBarrasLimpa = item.lista_barras 
-                ? item.lista_barras.replace(/,/g, ' ') 
+            const listaBarrasLimpa = item.lista_barras
+                ? item.lista_barras.replace(/,/g, ' ')
                 : '';
 
             const itemData = normalizeText(`
@@ -172,7 +172,7 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const todosItens = details.produtos || [];
     const itensConferidos = todosItens.filter(p => p.conferido === 'S');
     const itensPendentes = todosItens.filter(p => p.conferido !== 'S');
-    
+
     // --- LÓGICA DE 100% CONFERIDO ---
     const isAllConferred = todosItens.length > 0 && itensPendentes.length === 0;
 
@@ -183,10 +183,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const isStatusD = details.status_conf === 'D';
     const isStatusE = details.status_conf === 'E';
     const isOwner = userSession?.codusu && details.cod_usuario === userSession.codusu;
-    
+
     // Header aparece se: Não for 'E', OU (for 'E' mas não é dono), OU (for 'E', dono E tudo conferido)
     const shouldShowHeader = !isStatusE || (isStatusE && !isOwner) || isAllConferred;
-    
+
     const showConferidos = !searchText && itensConferidos.length > 0;
 
     return (
@@ -248,13 +248,13 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-                
+
                 {shouldShowHeader && (
                     <View style={[
-                        styles.summaryCard, 
+                        styles.summaryCard,
                         isStatusE && styles.summaryCardStatusE,
                         // Se tudo conferido, aplica estilo de sucesso (verde)
-                        isAllConferred && styles.summaryCardSuccess 
+                        isAllConferred && styles.summaryCardSuccess
                     ]}>
                         <View style={styles.summaryRow}>
                             <View>
@@ -262,10 +262,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                                 <Text style={[styles.romaneioBig, isAllConferred && styles.textWhite]}>#{details.fechamento}</Text>
                             </View>
                             <View style={[styles.dateBadge, isAllConferred && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                                <Ionicons 
-                                    name="calendar-outline" 
-                                    size={16} 
-                                    color={isAllConferred ? colors.white : colors.primary} 
+                                <Ionicons
+                                    name="calendar-outline"
+                                    size={16}
+                                    color={isAllConferred ? colors.white : colors.primary}
                                 />
                                 <Text style={[styles.dateText, isAllConferred && styles.textWhite]}>{details.data}</Text>
                             </View>
@@ -313,8 +313,8 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                         </View>
 
                         {isStatusD && (
-                            <AnimatedButton 
-                                style={styles.startButton} 
+                            <AnimatedButton
+                                style={styles.startButton}
                                 onPress={handleStartConferencePress}
                             >
                                 <Ionicons name="play-circle-outline" size={24} color={colors.white} />
@@ -335,10 +335,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Notas Próprias</Text>
                         {pendentesProprias.map((item, index) => (
-                            <RomaneioItemCard 
-                                key={`propria-${index}`} 
+                            <RomaneioItemCard
+                                key={`propria-${index}`}
                                 item={item}
-                                onPress={handleItemPress} 
+                                onPress={handleItemPress}
                             />
                         ))}
                     </View>
@@ -348,10 +348,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Notas de Terceiros</Text>
                         {pendentesTerceiros.map((item, index) => (
-                            <RomaneioItemCard 
-                                key={`terceiro-${index}`} 
+                            <RomaneioItemCard
+                                key={`terceiro-${index}`}
                                 item={item}
-                                onPress={handleItemPress} 
+                                onPress={handleItemPress}
                             />
                         ))}
                     </View>
@@ -370,24 +370,25 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
                         <View style={styles.section}>
                             {itensConferidos.map((item, index) => (
-                                <RomaneioItemCard 
-                                    key={`conferido-${index}`} 
+                                <RomaneioItemCard
+                                    key={`conferido-${index}`}
                                     item={item}
-                                    // Passa a prop para remover o estilo escuro/verde
-                                    suppressDoneStyle={isAllConferred} 
+                                    // Adicione a prop isAllConferred abaixo
+                                    isAllConferred={isAllConferred}
+                                    suppressDoneStyle={isAllConferred}
                                 />
                             ))}
                         </View>
                     </View>
                 )}
 
-                <View style={{ height: 80 }} /> 
+                <View style={{ height: 80 }} />
             </ScrollView>
 
             {/* BOTÃO FLUTUANTE (FAB) - CAMERA */}
             {/* Esconde se tudo estiver conferido (!isAllConferred) */}
             {(isStatusE && isOwner && !isAllConferred) && (
-                <AnimatedButton 
+                <AnimatedButton
                     style={[styles.fab, { bottom: 20 + insets.bottom }]}
                     onPress={() => setScannerVisible(true)}
                 >
@@ -449,7 +450,7 @@ const getStyles = (colors) => StyleSheet.create({
         gap: 10,
     },
     searchInputContainer: {
-        flex: 1, 
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: colors.white,
@@ -459,13 +460,13 @@ const getStyles = (colors) => StyleSheet.create({
     },
     searchInput: {
         flex: 1,
-        color: colors.black || '#000', 
+        color: colors.black || '#000',
         fontSize: 16,
     },
     squareClearButton: {
         width: 45,
         height: 45,
-        backgroundColor: '#F5F5F5', 
+        backgroundColor: '#F5F5F5',
         borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
@@ -682,7 +683,7 @@ const getStyles = (colors) => StyleSheet.create({
     },
     fab: {
         position: 'absolute',
-        alignSelf: 'center', 
+        alignSelf: 'center',
         width: 70,
         height: 70,
         borderRadius: 35,
