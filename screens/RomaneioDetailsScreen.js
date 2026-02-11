@@ -84,13 +84,17 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         }
     };
 
-    const handleConfirmItem = async (item) => {
+    const handleConfirmItem = async (item, qtd_embarcada, obs) => {
         try {
             setItemActionLoading(true);
-            await conferirItem(details.nu_unico, item.num_reg);
+            
+            // CORREÇÃO AQUI: Passando os novos valores para a API
+            await conferirItem(details.nu_unico, item.num_reg, qtd_embarcada, obs);
+            
             setItemModalVisible(false);
             setSelectedItem(null);
             
+            // Limpa busca e fecha teclado
             setSearchText('');
             Keyboard.dismiss();
 
