@@ -15,11 +15,23 @@ const RomaneioItemCard = ({ item, onPress, isAllConferred, suppressDoneStyle }) 
     // Verifica se o item já foi conferido
     const isConferido = item.conferido === 'S';
 
+    // Definições de cores dinâmicas baseadas no estado isAllConferred
+    const textColor = isAllConferred ? colors.white : colors.text;
+    const labelColor = isAllConferred ? 'rgba(255,255,255,0.8)' : colors.textLight;
+    const iconColor = isAllConferred ? colors.white : colors.textLight;
+    const checkIconColor = isAllConferred ? colors.success : colors.white; // Inverte cor do check no badge se o fundo for verde
+    const badgeBgColor = isAllConferred ? colors.white : colors.success; // Inverte fundo do badge se o fundo for verde
+
     return (
         <AnimatedButton 
-            style={[styles.card, (isConferido && !suppressDoneStyle) && styles.cardConferido]}
+            style={[
+                styles.card, 
+                // Estilo normal de conferido (Verde claro) - só aplica se NÃO estiver tudo conferido
+                (isConferido && !suppressDoneStyle && !isAllConferred) && styles.cardConferido,
+                // Estilo "Sucesso Total" (Verde Sólido igual ao cabeçalho)
+                isAllConferred && styles.cardSuccess
+            ]}
             onPress={() => onPress && onPress(item)}
-            // Se tudo estiver conferido, o botão fica habilitado para o clique visual
             disabled={!isAllConferred && !onPress} 
         >
             <View style={styles.mainRow}>
@@ -27,37 +39,41 @@ const RomaneioItemCard = ({ item, onPress, isAllConferred, suppressDoneStyle }) 
                 <View style={styles.infoContainer}>
                     <View style={styles.headerBadges}>
                         <Text style={styles.codeBadge}>{item.codigo_produto}</Text>
-                        <Text style={styles.dunText}>DUN: {item.codigo_barras_4_digitos}</Text>
+                        <Text style={[styles.dunText, { color: labelColor }]}>DUN: {item.codigo_barras_4_digitos}</Text>
                         
                         {/* Badge extra se estiver conferido */}
                         {isConferido && (
-                            <View style={styles.conferidoBadge}>
-                                <Ionicons name="checkmark-circle" size={12} color={colors.white} />
-                                <Text style={styles.conferidoText}>OK</Text>
+                            <View style={[styles.conferidoBadge, isAllConferred && { backgroundColor: badgeBgColor }]}>
+                                <Ionicons name="checkmark-circle" size={12} color={checkIconColor} />
+                                <Text style={[styles.conferidoText, isAllConferred && { color: colors.success }]}>OK</Text>
                             </View>
                         )}
                     </View>
 
-                    <Text style={styles.description}>{item.descricao}</Text>
+                    <Text style={[styles.description, { color: textColor }]}>{item.descricao}</Text>
                     
-                    <Text style={styles.eanText}>
-                        EAN: <Text style={styles.eanValue}>{item.referencia}</Text>
+                    <Text style={[styles.eanText, { color: labelColor }]}>
+                        EAN: <Text style={[styles.eanValue, { color: textColor }]}>{item.referencia}</Text>
                     </Text>
                 </View>
 
                 {/* COLUNA DA DIREITA: Destaque para Quantidade */}
-                <View style={styles.qtyContainer}>
-                    <Text style={styles.qtyLabel}>QTD</Text>
-                    <Text style={styles.qtyValue}>{item.quantidade}</Text>
-                    <Text style={styles.qtyUnit}>{item.unidade}</Text>
+                <View style={[styles.qtyContainer, isAllConferred && styles.qtyContainerSuccess]}>
+                    <Text style={[styles.qtyLabel, isAllConferred && { color: colors.success }]}>QTD</Text>
+                    <Text style={[styles.qtyValue, isAllConferred && { color: colors.success }]}>{item.quantidade}</Text>
+                    <Text style={[styles.qtyUnit, isAllConferred && { color: colors.success }]}>{item.unidade}</Text>
                 </View>
             </View>
 
             {/* RODAPÉ: Peso Bruto */}
-            <View style={[styles.footer, (isConferido && !suppressDoneStyle) && styles.footerConferido]}>
+            <View style={[
+                styles.footer, 
+                (isConferido && !suppressDoneStyle) && styles.footerConferido,
+                isAllConferred && styles.footerSuccess
+            ]}>
                 <View style={styles.weightBox}>
-                    <Ionicons name="scale-outline" size={14} color={colors.textLight} />
-                    <Text style={styles.weightText}>Peso Bruto: {formatPeso(item.peso_bruto)}</Text>
+                    <Ionicons name="scale-outline" size={14} color={iconColor} />
+                    <Text style={[styles.weightText, { color: labelColor }]}>Peso Bruto: {formatPeso(item.peso_bruto)}</Text>
                 </View>
             </View>
         </AnimatedButton>
@@ -77,6 +93,12 @@ const getStyles = (colors) => StyleSheet.create({
         backgroundColor: colors.cardConferidoBackground,
         borderColor: colors.cardConferidoBorder,
     },
+    // NOVO ESTILO: Igual ao cabeçalho (Verde Sólido)
+    cardSuccess: {
+        backgroundColor: colors.success,
+        borderColor: colors.success,
+        borderWidth: 1.5,
+    },
     mainRow: {
         flexDirection: 'row',
         padding: 12,
@@ -94,7 +116,7 @@ const getStyles = (colors) => StyleSheet.create({
     },
     codeBadge: {
         backgroundColor: colors.inputBackground,
-        color: colors.text,
+        color: colors.text, // Mantém contraste com o fundo branco do badge
         fontSize: 11,
         fontWeight: 'bold',
         paddingHorizontal: 6,
@@ -142,6 +164,10 @@ const getStyles = (colors) => StyleSheet.create({
         borderRadius: 8,
         minWidth: 70,
     },
+    // Quando o card é verde (sucesso), o container de qtd fica branco para contraste
+    qtyContainerSuccess: {
+        backgroundColor: colors.white, 
+    },
     qtyLabel: {
         fontSize: 10,
         fontWeight: 'bold',
@@ -169,6 +195,11 @@ const getStyles = (colors) => StyleSheet.create({
     footerConferido: {
         backgroundColor: 'rgba(0,0,0,0.05)',
         borderTopColor: colors.cardConferidoBorder,
+    },
+    // Rodapé mais escuro/transparente para combinar com o verde sólido
+    footerSuccess: {
+        backgroundColor: 'rgba(0,0,0,0.1)',
+        borderTopColor: 'rgba(255,255,255,0.2)',
     },
     weightBox: {
         flexDirection: 'row',
