@@ -99,8 +99,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
     const formatPeso = (val) => val ? `${val.toString().replace('.', ',')} kg` : '-';
 
-    // --- FUNÇÃO DE NORMALIZAÇÃO DE TEXTO ---
-    // Remove acentos (ex: Ã -> A, é -> e) e converte para minúsculas
     const normalizeText = (text) => {
         if (!text) return '';
         return text
@@ -110,15 +108,12 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
             .toLowerCase();
     };
 
-    // --- LÓGICA DE FILTRO AVANÇADA ---
     const filterItems = (items) => {
         if (!searchText) return items;
 
-        // Quebra a busca em termos (ex: "feij pre" -> ["feij", "pre"])
         const searchTerms = normalizeText(searchText).split(' ').filter(t => t.length > 0);
         
         return items.filter(item => {
-            // Concatena todos os campos pesquisáveis em uma única string normalizada
             const itemData = normalizeText(`
                 ${item.descricao || ''} 
                 ${item.codigo_produto || ''} 
@@ -126,7 +121,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                 ${item.codigo_barras_4_digitos || ''}
             `);
 
-            // Verifica se TODOS os termos digitados estão presentes nos dados do item
             return searchTerms.every(term => itemData.includes(term));
         });
     };
@@ -159,8 +153,13 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
     const isStatusD = details.status_conf === 'D';
     const isStatusE = details.status_conf === 'E';
+    
+    // Verifica se o usuário é o dono da conferência
     const isOwner = userSession?.codusu && details.cod_usuario === userSession.codusu;
+    
+    // Header só aparece se NÃO estiver em conferência, OU se estiver em conferência mas NÃO for o dono
     const shouldShowHeader = !isStatusE || (isStatusE && !isOwner);
+    
     const showConferidos = !searchText && itensConferidos.length > 0;
 
     return (
@@ -189,7 +188,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
             {/* HEADER EXPANDIDO COM BUSCA */}
             <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 30) }]}>
-                {/* Linha Superior: Voltar + Título */}
                 <View style={styles.navRow}>
                     <AnimatedButton onPress={() => navigation.goBack()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color={colors.white} />
@@ -197,7 +195,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     <Text style={styles.navTitle}>Detalhes do Romaneio</Text>
                 </View>
 
-                {/* Barra de Busca Integrada */}
                 <View style={styles.searchInputContainer}>
                     <Ionicons name="search" size={20} color={colors.textLight} style={{ marginRight: 8 }} />
                     <TextInput
@@ -206,7 +203,7 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                         placeholderTextColor={colors.textLight}
                         value={searchText}
                         onChangeText={setSearchText}
-                        autoCapitalize="characters" // Mantém maiúsculas no teclado visualmente, mas o filtro ignora
+                        autoCapitalize="characters"
                     />
                     {searchText.length > 0 && (
                         <AnimatedButton onPress={() => setSearchText('')}>
@@ -336,14 +333,25 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     </View>
                 )}
 
-                <View style={{ height: 40 }} />
+                <View style={{ height: 80 }} /> 
             </ScrollView>
+
+            {/* BOTÃO FLUTUANTE (FAB) - CAMERA */}
+            {/* Apenas exibe se Status = 'E' E o usuário for o Dono */}
+            {(isStatusE && isOwner) && (
+                <AnimatedButton 
+                    style={[styles.fab, { bottom: 20 + insets.bottom }]}
+                    onPress={() => console.log('Camera FAB pressionado')}
+                >
+                    <Ionicons name="camera" size={35} color={colors.white} />
+                </AnimatedButton>
+            )}
+
         </View>
     );
 };
 
 const getStyles = (colors) => StyleSheet.create({
-    // ... estilos existentes
     container: {
         flex: 1,
         backgroundColor: colors.background,
@@ -397,7 +405,6 @@ const getStyles = (colors) => StyleSheet.create({
     },
     searchInput: {
         flex: 1,
-        // CORRIGIDO: Define a cor do texto digitado explicitamente como preto (ou a cor do tema, se preto)
         color: colors.black || '#000', 
         fontSize: 16,
     },
@@ -599,6 +606,23 @@ const getStyles = (colors) => StyleSheet.create({
         marginTop: 10,
         color: colors.textLight,
         fontSize: 16,
+    },
+    // ESTILO DO FAB
+    fab: {
+        position: 'absolute',
+        alignSelf: 'center', // Centraliza horizontalmente
+        width: 70,
+        height: 70,
+        borderRadius: 35,
+        backgroundColor: colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 8,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.30,
+        shadowRadius: 4.65,
+        zIndex: 100,
     }
 });
 
