@@ -11,7 +11,7 @@ import RomaneioItemCard from '../components/RomaneioItemCard';
 import AnimatedButton from '../components/common/AnimatedButton';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import ItemConferenceModal from '../components/modals/ItemConferenceModal';
-import BarcodeScannerModal from '../components/modals/BarcodeScannerModal'; // IMPORTADO
+import BarcodeScannerModal from '../components/modals/BarcodeScannerModal'; 
 import * as SystemUI from 'expo-system-ui';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -32,7 +32,7 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
     const [isConfirmVisible, setConfirmVisible] = useState(false);
     const [isItemModalVisible, setItemModalVisible] = useState(false);
-    const [isScannerVisible, setScannerVisible] = useState(false); // NOVO ESTADO
+    const [isScannerVisible, setScannerVisible] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
     
     const [itemActionLoading, setItemActionLoading] = useState(false);
@@ -99,10 +99,9 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         }
     };
 
-    // Callback quando o scanner lê um código
     const handleBarCodeScanned = (scannedData) => {
-        setScannerVisible(false); // Fecha o modal
-        setSearchText(scannedData); // Joga o código na busca para filtrar
+        setScannerVisible(false);
+        setSearchText(scannedData);
     };
 
     const formatPeso = (val) => val ? `${val.toString().replace('.', ',')} kg` : '-';
@@ -116,17 +115,25 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
             .toLowerCase();
     };
 
+    // --- LÓGICA DE FILTRO ATUALIZADA ---
     const filterItems = (items) => {
         if (!searchText) return items;
 
         const searchTerms = normalizeText(searchText).split(' ').filter(t => t.length > 0);
         
         return items.filter(item => {
+            // Processa a lista de códigos extras (se houver)
+            // Ex: "789123, 789456" -> "789123 789456" para facilitar a busca
+            const listaBarrasLimpa = item.lista_barras 
+                ? item.lista_barras.replace(/,/g, ' ') 
+                : '';
+
             const itemData = normalizeText(`
                 ${item.descricao || ''} 
                 ${item.codigo_produto || ''} 
                 ${item.referencia || ''} 
                 ${item.codigo_barras_4_digitos || ''}
+                ${listaBarrasLimpa} 
             `);
 
             return searchTerms.every(term => itemData.includes(term));
@@ -185,7 +192,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                 onConfirm={handleConfirmItem}
             />
 
-            {/* Modal de Scanner */}
             <BarcodeScannerModal
                 visible={isScannerVisible}
                 onClose={() => setScannerVisible(false)}
@@ -198,7 +204,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                 </View>
             )}
 
-            {/* HEADER EXPANDIDO COM BUSCA */}
             <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 30) }]}>
                 <View style={styles.navRow}>
                     <AnimatedButton onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -348,11 +353,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                 <View style={{ height: 80 }} /> 
             </ScrollView>
 
-            {/* BOTÃO FLUTUANTE (FAB) - CAMERA */}
             {(isStatusE && isOwner) && (
                 <AnimatedButton 
                     style={[styles.fab, { bottom: 20 + insets.bottom }]}
-                    onPress={() => setScannerVisible(true)} // Abre o Modal
+                    onPress={() => setScannerVisible(true)}
                 >
                     <Ionicons name="camera" size={35} color={colors.white} />
                 </AnimatedButton>
@@ -618,10 +622,9 @@ const getStyles = (colors) => StyleSheet.create({
         color: colors.textLight,
         fontSize: 16,
     },
-    // ESTILO DO FAB
     fab: {
         position: 'absolute',
-        alignSelf: 'center', // Centraliza horizontalmente
+        alignSelf: 'center', 
         width: 70,
         height: 70,
         borderRadius: 35,
