@@ -1,21 +1,23 @@
 // components/modals/BarcodeScannerModal.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, Button, TouchableOpacity, Vibration } from 'react-native';
+import { View, Text, StyleSheet, Modal, Button, TouchableOpacity, Vibration, StatusBar } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { SIZES } from '../../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Importante para posicionar botões
 
 const BarcodeScannerModal = ({ visible, onClose, onScanned }) => {
     const { colors } = useTheme();
-    const styles = getStyles(colors);
+    const insets = useSafeAreaInsets(); // Obtém as medidas das áreas seguras
+    const styles = getStyles(colors, insets);
     
     const [permission, requestPermission] = useCameraPermissions();
     const [scanned, setScanned] = useState(false);
 
     useEffect(() => {
         if (visible) {
-            setScanned(false); // Reseta o estado ao abrir
+            setScanned(false);
             if (!permission?.granted) {
                 requestPermission();
             }
@@ -26,20 +28,19 @@ const BarcodeScannerModal = ({ visible, onClose, onScanned }) => {
         if (scanned) return;
         
         setScanned(true);
-        Vibration.vibrate(); // Feedback tátil
+        Vibration.vibrate();
         onScanned(data);
     };
 
     if (!visible) return null;
 
     if (!permission) {
-        // Carregando permissões
         return <View style={styles.container} />;
     }
 
     if (!permission.granted) {
         return (
-            <Modal visible={visible} animationType="slide" transparent={false}>
+            <Modal visible={visible} animationType="slide" transparent={false} statusBarTranslucent={true}>
                 <View style={[styles.container, styles.center]}>
                     <Text style={[styles.text, { color: colors.text, marginBottom: 20 }]}>
                         Precisamos de acesso à câmera para ler códigos.
@@ -52,8 +53,16 @@ const BarcodeScannerModal = ({ visible, onClose, onScanned }) => {
     }
 
     return (
-        <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+        <Modal 
+            visible={visible} 
+            animationType="slide" 
+            onRequestClose={onClose}
+            statusBarTranslucent={true} // Garante Full Screen invadindo a barra de status
+        >
             <View style={styles.container}>
+                {/* Configura barra de status transparente */}
+                <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+
                 <CameraView
                     style={StyleSheet.absoluteFillObject}
                     facing="back"
@@ -65,6 +74,7 @@ const BarcodeScannerModal = ({ visible, onClose, onScanned }) => {
                 
                 {/* Camada Visual (Overlay) */}
                 <View style={styles.overlay}>
+                    {/* Topo com padding dinâmico para não ficar atrás do notch/relógio */}
                     <View style={styles.topOverlay}>
                         <Text style={styles.scanText}>Aponte para o código de barras</Text>
                     </View>
@@ -72,7 +82,6 @@ const BarcodeScannerModal = ({ visible, onClose, onScanned }) => {
                     <View style={styles.middleRow}>
                         <View style={styles.sideOverlay} />
                         <View style={styles.scanArea}>
-                            {/* Cantos da área de scan para efeito visual */}
                             <View style={[styles.corner, styles.topLeft]} />
                             <View style={[styles.corner, styles.topRight]} />
                             <View style={[styles.corner, styles.bottomLeft]} />
@@ -81,6 +90,7 @@ const BarcodeScannerModal = ({ visible, onClose, onScanned }) => {
                         <View style={styles.sideOverlay} />
                     </View>
                     
+                    {/* Rodapé com padding dinâmico para não ficar atrás da barra de gestos */}
                     <View style={styles.bottomOverlay}>
                         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
                             <Ionicons name="close" size={30} color="#FFF" />
@@ -93,7 +103,7 @@ const BarcodeScannerModal = ({ visible, onClose, onScanned }) => {
     );
 };
 
-const getStyles = (colors) => StyleSheet.create({
+const getStyles = (colors, insets) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#000',
@@ -107,40 +117,43 @@ const getStyles = (colors) => StyleSheet.create({
         textAlign: 'center',
         fontSize: 16,
     },
-    // Overlay Styles para criar o efeito de "Buraco" no meio
     overlay: {
         flex: 1,
     },
     topOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.6)',
-        justifyContent: 'flex-end',
+        justifyContent: 'flex-start', // Alinha no topo
         alignItems: 'center',
-        paddingBottom: 20,
+        // Adiciona padding baseado no safe area + um respiro extra
+        paddingTop: insets.top + 50, 
     },
     middleRow: {
         flexDirection: 'row',
-        height: 250, // Altura da área de scan
+        height: 250, // Altura da área de leitura
     },
     sideOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.6)',
     },
     scanArea: {
-        width: 300, // Largura da área de scan
+        width: 300, // Largura da área de leitura
         backgroundColor: 'transparent',
     },
     bottomOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.6)',
-        justifyContent: 'center',
+        justifyContent: 'flex-end', // Alinha no fundo
         alignItems: 'center',
         gap: 10,
+        // Adiciona padding baseado no safe area + um respiro extra
+        paddingBottom: insets.bottom + 40,
     },
     scanText: {
         color: 'white',
         fontSize: 18,
         fontWeight: 'bold',
+        textAlign: 'center',
     },
     closeButton: {
         width: 60,
@@ -156,12 +169,12 @@ const getStyles = (colors) => StyleSheet.create({
         color: 'white',
         fontSize: 14,
     },
-    // Estilos dos cantos
+    // Estilos dos cantos verdes
     corner: {
         position: 'absolute',
         width: 30,
         height: 30,
-        borderColor: '#8BC74B', // Cor primária (Light Green)
+        borderColor: '#8BC74B',
         borderWidth: 4,
     },
     topLeft: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0 },
