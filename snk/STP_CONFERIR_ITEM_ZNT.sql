@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE "STP_CONFERIR_ITEM_ZNT" (
+CREATE OR REPLACE PROCEDURE NICOTST."STP_CONFERIR_ITEM_ZNT" (
     P_CODUSU NUMBER,        -- Código do usuário logado
     P_IDSESSAO VARCHAR2,    -- Identificador da execução
     P_QTDLINHAS NUMBER,     -- Quantidade de registros selecionados
@@ -8,6 +8,7 @@ CREATE OR REPLACE PROCEDURE "STP_CONFERIR_ITEM_ZNT" (
     FIELD_NUUNICO NUMBER;
     PARAM_DTHCONF DATE;
     V_STATUS_CAB CHAR(1);
+    V_USUARIO_CAB NUMBER;
     V_JA_CONFERIDO VARCHAR2(1);
 BEGIN
     -- 1. Obtenção do parâmetro de Data e Hora da tela
@@ -31,11 +32,17 @@ BEGIN
             RAISE_APPLICATION_ERROR(-20102, 'O item ' || FIELD_NUMREG || ' já está conferido e não pode ser processado novamente.');
         END IF;
 
-        -- 4. Validação do Status do Cabeçalho (Deve ser 'E')
-        SELECT STATUS INTO V_STATUS_CAB
+        -- 4. Validação do Cabeçalho (Status e Usuário Permissivo)
+        SELECT STATUS, CODUSU INTO V_STATUS_CAB, V_USUARIO_CAB
         FROM AD_ZNTCONFCAB
         WHERE NUUNICO = FIELD_NUUNICO;
 
+        -- 4.1 Validação de Usuário: Verifica se o usuário logado é o responsável pelo cabeçalho
+        IF NVL(V_USUARIO_CAB, 0) <> P_CODUSU THEN
+            RAISE_APPLICATION_ERROR(-20103, 'Ação negada: Você não é o usuário responsável por esta conferência (Usuário Responsável: ' || V_USUARIO_CAB || ').');
+        END IF;
+
+        -- 4.2 Validação do Status (Deve ser 'E')
         IF NVL(V_STATUS_CAB, ' ') <> 'E' THEN
             RAISE_APPLICATION_ERROR(-20101, 'O item não pode ser conferido pois o status do fechamento não é "Em Conferência" (E).');
         END IF;
