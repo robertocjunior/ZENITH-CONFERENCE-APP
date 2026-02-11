@@ -78,6 +78,9 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     };
 
     const handleItemPress = (item) => {
+        // Permite abrir se não estiver 100% conferido (para correções) ou se não for o dono
+        // Ajuste conforme regra de negócio: se 100% e dono, talvez bloquear?
+        // Por enquanto, mantém lógica original
         if (!shouldShowHeader && item.conferido !== 'S') {
             setSelectedItem(item);
             setItemModalVisible(true);
@@ -87,14 +90,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const handleConfirmItem = async (item, qtd_embarcada, obs) => {
         try {
             setItemActionLoading(true);
-            
-            // CORREÇÃO AQUI: Passando os novos valores para a API
             await conferirItem(details.nu_unico, item.num_reg, qtd_embarcada, obs);
-            
             setItemModalVisible(false);
             setSelectedItem(null);
             
-            // Limpa busca e fecha teclado
             setSearchText('');
             Keyboard.dismiss();
 
@@ -111,13 +110,8 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         setSearchText(scannedData);
     };
 
-    // --- CORREÇÃO DO DELAY ---
     const handleClearSearch = () => {
-        // 1. Atualiza a UI imediatamente (limpa o texto)
-        setSearchText(''); 
-
-        // 2. Aguarda 50ms para garantir que o React renderizou o campo vazio
-        // antes de chamar a animação pesada de fechar o teclado.
+        setSearchText('');
         setTimeout(() => {
             Keyboard.dismiss();
         }, 50);
@@ -178,6 +172,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const todosItens = details.produtos || [];
     const itensConferidos = todosItens.filter(p => p.conferido === 'S');
     const itensPendentes = todosItens.filter(p => p.conferido !== 'S');
+    
+    // --- LÓGICA DE 100% CONFERIDO ---
+    const isAllConferred = todosItens.length > 0 && itensPendentes.length === 0;
+
     const pendentesFiltrados = filterItems(itensPendentes);
     const pendentesProprias = pendentesFiltrados.filter(p => p.tipo === 'O');
     const pendentesTerceiros = pendentesFiltrados.filter(p => p.tipo !== 'O');
@@ -185,7 +183,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const isStatusD = details.status_conf === 'D';
     const isStatusE = details.status_conf === 'E';
     const isOwner = userSession?.codusu && details.cod_usuario === userSession.codusu;
-    const shouldShowHeader = !isStatusE || (isStatusE && !isOwner);
+    
+    // Header aparece se: Não for 'E', OU (for 'E' mas não é dono), OU (for 'E', dono E tudo conferido)
+    const shouldShowHeader = !isStatusE || (isStatusE && !isOwner) || isAllConferred;
+    
     const showConferidos = !searchText && itensConferidos.length > 0;
 
     return (
@@ -227,7 +228,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     <Text style={styles.navTitle}>Detalhes do Romaneio</Text>
                 </View>
 
-                {/* Linha de Busca */}
                 <View style={styles.searchRow}>
                     <View style={styles.searchInputContainer}>
                         <Ionicons name="search" size={20} color={colors.textLight} style={{ marginRight: 8 }} />
@@ -241,14 +241,8 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                         />
                     </View>
 
-                    {/* Botão de Limpar Quadrado e Customizado */}
                     <AnimatedButton onPress={handleClearSearch} style={styles.squareClearButton}>
-                        {/* Ícone usa uma cor FIXA (vermelho escuro) para não depender do tema */}
-                        <Ionicons 
-                            name="close" 
-                            size={28} 
-                            color="#D32F2F"  
-                        />
+                        <Ionicons name="close" size={28} color="#D32F2F" />
                     </AnimatedButton>
                 </View>
             </View>
@@ -256,53 +250,65 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
             <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
                 
                 {shouldShowHeader && (
-                    <View style={[styles.summaryCard, isStatusE && styles.summaryCardStatusE]}>
+                    <View style={[
+                        styles.summaryCard, 
+                        isStatusE && styles.summaryCardStatusE,
+                        // Se tudo conferido, aplica estilo de sucesso (verde)
+                        isAllConferred && styles.summaryCardSuccess 
+                    ]}>
                         <View style={styles.summaryRow}>
                             <View>
-                                <Text style={styles.label}>ROMANEIO</Text>
-                                <Text style={styles.romaneioBig}>#{details.fechamento}</Text>
+                                <Text style={[styles.label, isAllConferred && styles.textWhite]}>ROMANEIO</Text>
+                                <Text style={[styles.romaneioBig, isAllConferred && styles.textWhite]}>#{details.fechamento}</Text>
                             </View>
-                            <View style={styles.dateBadge}>
-                                <Ionicons name="calendar-outline" size={16} color={colors.primary} />
-                                <Text style={styles.dateText}>{details.data}</Text>
+                            <View style={[styles.dateBadge, isAllConferred && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                                <Ionicons 
+                                    name="calendar-outline" 
+                                    size={16} 
+                                    color={isAllConferred ? colors.white : colors.primary} 
+                                />
+                                <Text style={[styles.dateText, isAllConferred && styles.textWhite]}>{details.data}</Text>
                             </View>
                         </View>
 
-                        <View style={styles.divider} />
+                        <View style={[styles.divider, isAllConferred && { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
 
                         <View style={styles.infoRow}>
-                            <Ionicons name="person" size={16} color={colors.textLight} />
-                            <Text style={styles.infoText}>{details.motorista}</Text>
+                            <Ionicons name="person" size={16} color={isAllConferred ? colors.white : colors.textLight} />
+                            <Text style={[styles.infoText, isAllConferred && styles.textWhite]}>{details.motorista}</Text>
                         </View>
                         <View style={styles.infoRow}>
-                            <Ionicons name="bus" size={16} color={colors.textLight} />
-                            <Text style={styles.infoText}>{details.veiculo}</Text>
+                            <Ionicons name="bus" size={16} color={isAllConferred ? colors.white : colors.textLight} />
+                            <Text style={[styles.infoText, isAllConferred && styles.textWhite]}>{details.veiculo}</Text>
                         </View>
 
                         {isStatusE && (
-                            <View style={styles.userInfoContainer}>
-                                <View style={styles.userBadge}>
+                            <View style={[styles.userInfoContainer, isAllConferred && { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+                                <View style={[styles.userBadge, isAllConferred && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
                                     <Ionicons name="person" size={12} color={colors.white} />
-                                    <Text style={styles.userBadgeText}>EM CONFERÊNCIA</Text>
+                                    {/* Texto muda se finalizado */}
+                                    <Text style={styles.userBadgeText}>
+                                        {isAllConferred ? "CONFERÊNCIA CONCLUÍDA" : "EM CONFERÊNCIA"}
+                                    </Text>
                                 </View>
-                                <Text style={styles.userNameText} numberOfLines={1}>
+                                <Text style={[styles.userNameText, isAllConferred && styles.textWhite]} numberOfLines={1}>
                                     <Text style={styles.bold}>{details.cod_usuario}</Text> - {details.nome_usuario}
                                 </Text>
                             </View>
                         )}
 
-                        <View style={styles.statsRow}>
+                        <View style={[styles.statsRow, isAllConferred && { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
                             <View style={styles.statItem}>
-                                <Text style={styles.statLabel}>PLACA</Text>
-                                <Text style={styles.statValue}>{details.placa}</Text>
+                                <Text style={[styles.statLabel, isAllConferred && styles.textWhite]}>PLACA</Text>
+                                <Text style={[styles.statValue, isAllConferred && styles.textWhite]}>{details.placa}</Text>
                             </View>
                             <View style={styles.statItem}>
-                                <Text style={styles.statLabel}>PESO TOTAL</Text>
-                                <Text style={styles.statValue}>{formatPeso(details.peso)}</Text>
+                                <Text style={[styles.statLabel, isAllConferred && styles.textWhite]}>PESO TOTAL</Text>
+                                <Text style={[styles.statValue, isAllConferred && styles.textWhite]}>{formatPeso(details.peso)}</Text>
                             </View>
                             <View style={styles.statItem}>
-                                <Text style={styles.statLabel}>PALETES</Text>
-                                <Text style={styles.statValue}>{details.paletes}</Text>
+                                <Text style={[styles.statLabel, isAllConferred && styles.textWhite]}>PALETES</Text>
+                                <Text style={[styles.statValue, isAllConferred && styles.textWhite]}>{details.paletes}</Text>
                             </View>
                         </View>
 
@@ -367,6 +373,8 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                                 <RomaneioItemCard 
                                     key={`conferido-${index}`} 
                                     item={item}
+                                    // Passa a prop para remover o estilo escuro/verde
+                                    suppressDoneStyle={isAllConferred} 
                                 />
                             ))}
                         </View>
@@ -376,7 +384,9 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                 <View style={{ height: 80 }} /> 
             </ScrollView>
 
-            {(isStatusE && isOwner) && (
+            {/* BOTÃO FLUTUANTE (FAB) - CAMERA */}
+            {/* Esconde se tudo estiver conferido (!isAllConferred) */}
+            {(isStatusE && isOwner && !isAllConferred) && (
                 <AnimatedButton 
                     style={[styles.fab, { bottom: 20 + insets.bottom }]}
                     onPress={() => setScannerVisible(true)}
@@ -452,16 +462,14 @@ const getStyles = (colors) => StyleSheet.create({
         color: colors.black || '#000', 
         fontSize: 16,
     },
-    // Estilo Atualizado do Botão de Limpar
     squareClearButton: {
         width: 45,
         height: 45,
-        // Cor fixa (Cinza bem claro) para diferenciar do tema
         backgroundColor: '#F5F5F5', 
         borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 2, // Sombra leve para destacar
+        elevation: 2,
     },
     scrollContent: {
         padding: 15,
@@ -484,6 +492,16 @@ const getStyles = (colors) => StyleSheet.create({
         backgroundColor: colors.cardStatusEBackground,
         borderColor: colors.cardStatusEBorder,
         borderWidth: 1.5,
+    },
+    // NOVO ESTILO: Cabeçalho Verde (Sucesso)
+    summaryCardSuccess: {
+        backgroundColor: colors.success, // Verde
+        borderColor: colors.success,
+        borderWidth: 1.5,
+    },
+    // Helper para texto branco no cabeçalho verde
+    textWhite: {
+        color: colors.white,
     },
     summaryRow: {
         flexDirection: 'row',
