@@ -11,6 +11,7 @@ import RomaneioItemCard from '../components/RomaneioItemCard';
 import AnimatedButton from '../components/common/AnimatedButton';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import ItemConferenceModal from '../components/modals/ItemConferenceModal';
+import BarcodeScannerModal from '../components/modals/BarcodeScannerModal'; // IMPORTADO
 import * as SystemUI from 'expo-system-ui';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -31,6 +32,7 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
     const [isConfirmVisible, setConfirmVisible] = useState(false);
     const [isItemModalVisible, setItemModalVisible] = useState(false);
+    const [isScannerVisible, setScannerVisible] = useState(false); // NOVO ESTADO
     const [selectedItem, setSelectedItem] = useState(null);
     
     const [itemActionLoading, setItemActionLoading] = useState(false);
@@ -97,6 +99,12 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         }
     };
 
+    // Callback quando o scanner lê um código
+    const handleBarCodeScanned = (scannedData) => {
+        setScannerVisible(false); // Fecha o modal
+        setSearchText(scannedData); // Joga o código na busca para filtrar
+    };
+
     const formatPeso = (val) => val ? `${val.toString().replace('.', ',')} kg` : '-';
 
     const normalizeText = (text) => {
@@ -154,12 +162,8 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const isStatusD = details.status_conf === 'D';
     const isStatusE = details.status_conf === 'E';
     
-    // Verifica se o usuário é o dono da conferência
     const isOwner = userSession?.codusu && details.cod_usuario === userSession.codusu;
-    
-    // Header só aparece se NÃO estiver em conferência, OU se estiver em conferência mas NÃO for o dono
     const shouldShowHeader = !isStatusE || (isStatusE && !isOwner);
-    
     const showConferidos = !searchText && itensConferidos.length > 0;
 
     return (
@@ -180,6 +184,14 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                 onClose={() => setItemModalVisible(false)}
                 onConfirm={handleConfirmItem}
             />
+
+            {/* Modal de Scanner */}
+            <BarcodeScannerModal
+                visible={isScannerVisible}
+                onClose={() => setScannerVisible(false)}
+                onScanned={handleBarCodeScanned}
+            />
+
             {itemActionLoading && (
                 <View style={[styles.loadingOverlay]}>
                     <ActivityIndicator size="large" color={colors.primary} />
@@ -337,11 +349,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
             </ScrollView>
 
             {/* BOTÃO FLUTUANTE (FAB) - CAMERA */}
-            {/* Apenas exibe se Status = 'E' E o usuário for o Dono */}
             {(isStatusE && isOwner) && (
                 <AnimatedButton 
                     style={[styles.fab, { bottom: 20 + insets.bottom }]}
-                    onPress={() => console.log('Camera FAB pressionado')}
+                    onPress={() => setScannerVisible(true)} // Abre o Modal
                 >
                     <Ionicons name="camera" size={35} color={colors.white} />
                 </AnimatedButton>
