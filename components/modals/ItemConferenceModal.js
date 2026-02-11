@@ -1,18 +1,23 @@
 // components/modals/ItemConferenceModal.js
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Modal, StyleSheet, TextInput, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, Modal, StyleSheet, TextInput, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Alert } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import AnimatedButton from '../common/AnimatedButton';
 import { Ionicons } from '@expo/vector-icons';
 
 const ItemConferenceModal = ({ visible, item, onClose, onConfirm }) => {
     const { colors } = useTheme();
-    const styles = getStyles(colors);
+    // Passamos uma cor de erro fixa para garantir o visual vermelho
+    const styles = getStyles(colors, '#D32F2F'); 
     
     // Estados
     const [step, setStep] = useState('quantity'); // 'quantity' ou 'observation'
     const [quantity, setQuantity] = useState('');
     const [observation, setObservation] = useState('');
+    
+    // NOVO ESTADO: Para controlar a mensagem de erro visual
+    const [errorMsg, setErrorMsg] = useState(null);
+
     const quantityInputRef = useRef(null);
     const obsInputRef = useRef(null);
 
@@ -20,45 +25,67 @@ const ItemConferenceModal = ({ visible, item, onClose, onConfirm }) => {
     useEffect(() => {
         if (visible && item) {
             setStep('quantity');
-            setQuantity(''); // Começa vazio para o usuário digitar
+            setQuantity(''); 
             setObservation('');
+            setErrorMsg(null); // Reseta o erro ao abrir
             
-            // Focar no input de quantidade automaticamente após um breve delay para a animação do modal
             setTimeout(() => {
                 quantityInputRef.current?.focus();
             }, 100);
         }
     }, [visible, item]);
 
+    // Função auxiliar para limpar erro ao digitar
+    const handleQuantityChange = (text) => {
+        setQuantity(text);
+        if (errorMsg) setErrorMsg(null); // Limpa o erro se o usuário começar a corrigir
+    };
+
     const handleQuantityConfirm = () => {
-        const inputQty = parseFloat(quantity.replace(',', '.'));
+        // Limpa erro anterior antes de validar
+        setErrorMsg(null);
+
+        let inputQtyStr = quantity.replace(',', '.');
+        // Se estiver vazio, considera 0
+        if (inputQtyStr.trim() === '') inputQtyStr = '0';
+
+        const inputQty = parseFloat(inputQtyStr);
         const expectedQty = parseFloat(item?.quantidade || 0);
 
         if (isNaN(inputQty)) {
-            alert("Por favor, digite uma quantidade válida.");
+             // Define a mensagem de erro visual em vez de Alert
+            setErrorMsg("Por favor, digite um número válido.");
             return;
         }
 
-        // Verifica divergência
-        if (inputQty !== expectedQty) {
-            // Se divergir, vai para o passo da observação
+        // REGRA DE OURO: Bloquear quantidade maior que o esperado
+        if (inputQty > expectedQty) {
+            // Define a mensagem de erro visual no estilo "balão"
+            setErrorMsg(`A quantidade não pode ser maior que a esperada (${expectedQty}).`);
+            return; // Para aqui e mostra o erro visual
+        }
+
+        // Verifica divergência (apenas para menos)
+        if (inputQty < expectedQty && inputQty >= 0) {
             setStep('observation');
-            // Foca na observação
             setTimeout(() => {
                 obsInputRef.current?.focus();
             }, 100);
-        } else {
-            // Se bater, finaliza sem observação
+        } else if (inputQty === expectedQty) {
             onConfirm(item, inputQty, null);
+        } else {
+             setErrorMsg("Quantidade inválida.");
         }
     };
 
     const handleFinalConfirm = () => {
         if (!observation || observation.trim() === '') {
-            alert("Por favor, informe o motivo da divergência.");
+            // Aqui ainda usamos Alert pois é um passo diferente, 
+            // mas poderíamos aplicar a mesma lógica se quisesse.
+            Alert.alert("Atenção", "Por favor, informe o motivo da divergência.");
             return;
         }
-        const inputQty = parseFloat(quantity.replace(',', '.'));
+        const inputQty = parseFloat(quantity.replace(',', '.') || '0');
         onConfirm(item, inputQty, observation);
     };
 
@@ -78,7 +105,6 @@ const ItemConferenceModal = ({ visible, item, onClose, onConfirm }) => {
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <View style={styles.modalContainer}>
                         
-                        {/* CABEÇALHO COM INFORMAÇÕES DO PRODUTO */}
                         <View style={styles.header}>
                             <View style={styles.headerTop}>
                                 <Text style={styles.title}>Conferência de Item</Text>
@@ -101,16 +127,35 @@ const ItemConferenceModal = ({ visible, item, onClose, onConfirm }) => {
                                     </View>
 
                                     <Text style={styles.label}>Qtd. Conferida:</Text>
+                                    
+                                    {/* INPUT COM ESTILO DINÂMICO */}
                                     <TextInput
                                         ref={quantityInputRef}
-                                        style={styles.inputQuantity}
+                                        // Aplica estilo de erro se errorMsg existir
+                                        style={[
+                                            styles.inputQuantity, 
+                                            errorMsg && styles.inputError
+                                        ]}
                                         value={quantity}
-                                        onChangeText={setQuantity}
+                                        onChangeText={handleQuantityChange} // Usa a nova função
                                         keyboardType="numeric"
                                         placeholder="0"
                                         placeholderTextColor={colors.textLight}
                                         selectTextOnFocus
                                     />
+
+                                    {/* BALÃO DE ERRO ESTÉTICO */}
+                                    {errorMsg && (
+                                        <View style={styles.errorBubbleContainer}>
+                                            {/* O triângulo apontando para cima */}
+                                            <View style={styles.errorTriangle} />
+                                            {/* O corpo do balão */}
+                                            <View style={styles.errorBubbleBody}>
+                                                <Ionicons name="alert-circle" size={20} color="#D32F2F" />
+                                                <Text style={styles.errorText}>{errorMsg}</Text>
+                                            </View>
+                                        </View>
+                                    )}
 
                                     <AnimatedButton style={styles.confirmButton} onPress={handleQuantityConfirm}>
                                         <Text style={styles.confirmButtonText}>CONFIRMAR QUANTIDADE</Text>
@@ -118,7 +163,7 @@ const ItemConferenceModal = ({ visible, item, onClose, onConfirm }) => {
                                 </>
                             )}
 
-                            {/* PASSO 2: JUSTIFICAR DIVERGÊNCIA */}
+                            {/* PASSO 2: JUSTIFICAR DIVERGÊNCIA (Sem alterações visuais aqui) */}
                             {step === 'observation' && (
                                 <>
                                     <View style={styles.warningBox}>
@@ -153,6 +198,7 @@ const ItemConferenceModal = ({ visible, item, onClose, onConfirm }) => {
                                         style={styles.backButton} 
                                         onPress={() => {
                                             setStep('quantity');
+                                            setErrorMsg(null); // Limpa erro ao voltar
                                             setTimeout(() => quantityInputRef.current?.focus(), 100);
                                         }}
                                     >
@@ -169,7 +215,8 @@ const ItemConferenceModal = ({ visible, item, onClose, onConfirm }) => {
     );
 };
 
-const getStyles = (colors) => StyleSheet.create({
+// Recebe a cor de erro como parâmetro
+const getStyles = (colors, errorColor) => StyleSheet.create({
     overlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -181,6 +228,7 @@ const getStyles = (colors) => StyleSheet.create({
         borderTopRightRadius: 20,
         padding: 20,
         elevation: 10,
+        paddingBottom: 30, // Um pouco mais de espaço embaixo
     },
     header: {
         marginBottom: 20,
@@ -219,7 +267,7 @@ const getStyles = (colors) => StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: 5,
     },
     infoLabel: {
         fontSize: 16,
@@ -234,18 +282,66 @@ const getStyles = (colors) => StyleSheet.create({
         fontSize: 16,
         color: colors.text,
         fontWeight: 'bold',
+        marginBottom: 5,
     },
+    // Estilo base do input
     inputQuantity: {
         backgroundColor: colors.white,
         borderWidth: 2,
-        borderColor: colors.primary,
-        borderRadius: 10,
+        borderColor: colors.primary, // Cor padrão (azul/verde do tema)
+        borderRadius: 12, // Bordas mais arredondadas
         padding: 15,
-        fontSize: 32, // Fonte grande para números
+        fontSize: 32,
         fontWeight: 'bold',
         textAlign: 'center',
         color: colors.black,
     },
+    // Estilo condicional de erro para o input
+    inputError: {
+        borderColor: errorColor, // Borda vermelha
+        backgroundColor: '#FFEBEE', // Fundo levemente avermelhado
+        color: errorColor, // Texto vermelho
+    },
+    
+    // --- Estilos do Balão de Erro ---
+    errorBubbleContainer: {
+        alignItems: 'center',
+        marginTop: -5, // Puxa um pouco para cima para conectar com o input
+        marginBottom: 5,
+    },
+    errorTriangle: {
+        width: 0,
+        height: 0,
+        backgroundColor: 'transparent',
+        borderStyle: 'solid',
+        borderLeftWidth: 10,
+        borderRightWidth: 10,
+        borderBottomWidth: 12,
+        borderLeftColor: 'transparent',
+        borderRightColor: 'transparent',
+        borderBottomColor: errorColor, // Cor do triângulo igual à borda
+        marginBottom: -2, // Sobrepõe levemente o corpo do balão
+    },
+    errorBubbleBody: {
+        backgroundColor: '#FFEBEE', // Fundo vermelho claro
+        borderColor: errorColor,
+        borderWidth: 1,
+        borderRadius: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 15,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        width: '100%', // Ocupa a largura disponível
+    },
+    errorText: {
+        color: errorColor,
+        fontSize: 14,
+        fontWeight: '600',
+        flex: 1, // Permite que o texto quebre linha se necessário
+    },
+    // ------------------------------------
+
     inputObs: {
         backgroundColor: colors.white,
         borderWidth: 1,
@@ -260,7 +356,7 @@ const getStyles = (colors) => StyleSheet.create({
     warningBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFF3E0', // Laranja bem claro
+        backgroundColor: '#FFF3E0',
         padding: 10,
         borderRadius: 8,
         gap: 10,
@@ -268,7 +364,7 @@ const getStyles = (colors) => StyleSheet.create({
         borderColor: '#FFE0B2',
     },
     warningText: {
-        color: '#E65100', // Laranja escuro
+        color: '#E65100',
         fontWeight: 'bold',
         fontSize: 16,
     },
