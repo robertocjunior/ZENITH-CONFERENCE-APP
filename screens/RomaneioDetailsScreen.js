@@ -1,11 +1,11 @@
 // screens/RomaneioDetailsScreen.js
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TextInput } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { SIZES } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-// IMPORTANTE: Adicionado conferirItem nos imports
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; 
 import { fetchRomaneioDetails, startConferencia, conferirItem } from '../api'; 
 import RomaneioItemCard from '../components/RomaneioItemCard';
 import AnimatedButton from '../components/common/AnimatedButton';
@@ -19,18 +19,20 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const { userSession } = useAuth();
     const styles = getStyles(colors);
     const { romaneioId } = route.params;
+    
+    const insets = useSafeAreaInsets(); 
 
     const [details, setDetails] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
     
-    // Modais
+    const [searchText, setSearchText] = useState('');
+
     const [isConfirmVisible, setConfirmVisible] = useState(false);
     const [isItemModalVisible, setItemModalVisible] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
     
-    // Estado de loading específico para o modal de item
     const [itemActionLoading, setItemActionLoading] = useState(false);
 
     useFocusEffect(
@@ -80,19 +82,14 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         }
     };
 
-    // --- NOVA LÓGICA DE CONFERÊNCIA DE ITEM ---
     const handleConfirmItem = async (item) => {
         try {
             setItemActionLoading(true);
-            
-            // Chama a API passando nu_unico (do cabeçalho) e num_reg (do item)
             await conferirItem(details.nu_unico, item.num_reg);
-            
-            // Fecha modal e recarrega lista
             setItemModalVisible(false);
             setSelectedItem(null);
+            setSearchText(''); 
             await loadDetails();
-            
         } catch (e) {
             Alert.alert('Erro', e.message || 'Falha ao conferir item.');
         } finally {
@@ -101,6 +98,18 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     };
 
     const formatPeso = (val) => val ? `${val.toString().replace('.', ',')} kg` : '-';
+
+    const filterItems = (items) => {
+        if (!searchText) return items;
+        const lowerSearch = searchText.toLowerCase();
+        
+        return items.filter(item => 
+            (item.descricao && item.descricao.toLowerCase().includes(lowerSearch)) ||
+            (item.codigo_produto && item.codigo_produto.toString().includes(lowerSearch)) ||
+            (item.referencia && item.referencia.toString().includes(lowerSearch)) || 
+            (item.codigo_barras_4_digitos && item.codigo_barras_4_digitos.toString().includes(lowerSearch))
+        );
+    };
 
     if (loading && !details) {
         return (
@@ -124,14 +133,15 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const todosItens = details.produtos || [];
     const itensConferidos = todosItens.filter(p => p.conferido === 'S');
     const itensPendentes = todosItens.filter(p => p.conferido !== 'S');
-    const pendentesProprias = itensPendentes.filter(p => p.tipo === 'O');
-    const pendentesTerceiros = itensPendentes.filter(p => p.tipo !== 'O');
+    const pendentesFiltrados = filterItems(itensPendentes);
+    const pendentesProprias = pendentesFiltrados.filter(p => p.tipo === 'O');
+    const pendentesTerceiros = pendentesFiltrados.filter(p => p.tipo !== 'O');
 
     const isStatusD = details.status_conf === 'D';
     const isStatusE = details.status_conf === 'E';
-    
     const isOwner = userSession?.codusu && details.cod_usuario === userSession.codusu;
     const shouldShowHeader = !isStatusE || (isStatusE && !isOwner);
+    const showConferidos = !searchText && itensConferidos.length > 0;
 
     return (
         <View style={styles.container}>
@@ -145,31 +155,48 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                 confirmText="Iniciar"
             />
 
-            {/* Modal de Conferência de Item Atualizado */}
             <ItemConferenceModal
                 visible={isItemModalVisible}
                 item={selectedItem}
                 onClose={() => setItemModalVisible(false)}
                 onConfirm={handleConfirmItem}
-                // (Opcional) Você pode passar isLoading para desabilitar o botão enquanto chama a API
-                // Se tiver atualizado o ItemConferenceModal para receber essa prop
-                // isLoading={itemActionLoading} 
             />
-            {/* Loading Overlay opcional se o modal não suportar prop de loading nativa */}
             {itemActionLoading && (
                 <View style={[styles.loadingOverlay]}>
                     <ActivityIndicator size="large" color={colors.primary} />
                 </View>
             )}
 
-            <View style={styles.navHeader}>
-                <AnimatedButton onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={colors.white} />
-                </AnimatedButton>
-                <Text style={styles.navTitle}>Detalhes do Romaneio</Text>
+            {/* HEADER EXPANDIDO COM BUSCA */}
+            <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 30) }]}>
+                {/* Linha Superior: Voltar + Título */}
+                <View style={styles.navRow}>
+                    <AnimatedButton onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <Ionicons name="arrow-back" size={24} color={colors.white} />
+                    </AnimatedButton>
+                    <Text style={styles.navTitle}>Detalhes do Romaneio</Text>
+                </View>
+
+                {/* Barra de Busca Integrada */}
+                <View style={styles.searchInputContainer}>
+                    <Ionicons name="search" size={20} color={colors.textLight} style={{ marginRight: 8 }} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Filtrar por nome, código, EAN..."
+                        placeholderTextColor={colors.textLight}
+                        value={searchText}
+                        onChangeText={setSearchText}
+                        autoCapitalize="characters"
+                    />
+                    {searchText.length > 0 && (
+                        <AnimatedButton onPress={() => setSearchText('')}>
+                            <Ionicons name="close-circle" size={20} color={colors.textLight} />
+                        </AnimatedButton>
+                    )}
+                </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
                 
                 {shouldShowHeader && (
                     <View style={[styles.summaryCard, isStatusE && styles.summaryCardStatusE]}>
@@ -234,6 +261,13 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     </View>
                 )}
 
+                {searchText.length > 0 && pendentesFiltrados.length === 0 && (
+                    <View style={styles.emptySearchContainer}>
+                        <Ionicons name="search-outline" size={40} color={colors.textLight} />
+                        <Text style={styles.emptySearchText}>Nenhum item pendente encontrado.</Text>
+                    </View>
+                )}
+
                 {pendentesProprias.length > 0 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Notas Próprias</Text>
@@ -260,7 +294,7 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     </View>
                 )}
 
-                {itensConferidos.length > 0 && (
+                {showConferidos && (
                     <View style={styles.conferidosWrapper}>
                         <View style={styles.conferidosBar}>
                             <View style={styles.barLine} />
@@ -282,7 +316,7 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     </View>
                 )}
 
-                <View style={{ height: 60 }} />
+                <View style={{ height: 40 }} />
             </ScrollView>
         </View>
     );
@@ -305,14 +339,24 @@ const getStyles = (colors) => StyleSheet.create({
         alignItems: 'center',
         zIndex: 999,
     },
-    navHeader: {
+    // NOVO HEADER CONTAINER
+    headerContainer: {
         backgroundColor: colors.primary,
-        paddingTop: 50,
-        paddingBottom: 20,
         paddingHorizontal: 20,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+        zIndex: 10,
+        elevation: 5,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+    },
+    navRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        zIndex: 1,
+        marginBottom: 15,
     },
     backButton: {
         marginRight: 15,
@@ -323,9 +367,26 @@ const getStyles = (colors) => StyleSheet.create({
         fontWeight: 'bold',
         color: colors.white,
     },
+    // Estilo da Busca no Topo
+    searchInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.white, // Fundo branco para destaque no header colorido
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        height: 45,
+    },
+    searchInput: {
+        flex: 1,
+        color: colors.text, // Texto escuro dentro do input branco
+        fontSize: 16,
+    },
+    
     scrollContent: {
         padding: 15,
+        paddingTop: 20, // Espaço extra no topo do scroll
     },
+    // ... (Demais estilos mantidos iguais)
     summaryCard: {
         backgroundColor: colors.cardBackground,
         borderRadius: 16,
@@ -509,6 +570,17 @@ const getStyles = (colors) => StyleSheet.create({
         fontSize: 12,
         fontWeight: 'bold',
         letterSpacing: 1,
+    },
+    emptySearchContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 40,
+        opacity: 0.7,
+    },
+    emptySearchText: {
+        marginTop: 10,
+        color: colors.textLight,
+        fontSize: 16,
     }
 });
 
