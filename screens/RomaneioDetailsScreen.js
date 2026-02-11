@@ -1,6 +1,6 @@
 // screens/RomaneioDetailsScreen.js
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TextInput, Keyboard } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { SIZES } from '../constants/theme';
@@ -90,7 +90,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
             await conferirItem(details.nu_unico, item.num_reg);
             setItemModalVisible(false);
             setSelectedItem(null);
-            setSearchText(''); 
+            
+            setSearchText('');
+            Keyboard.dismiss();
+
             await loadDetails();
         } catch (e) {
             Alert.alert('Erro', e.message || 'Falha ao conferir item.');
@@ -104,6 +107,18 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         setSearchText(scannedData);
     };
 
+    // --- CORREÇÃO DO DELAY ---
+    const handleClearSearch = () => {
+        // 1. Atualiza a UI imediatamente (limpa o texto)
+        setSearchText(''); 
+
+        // 2. Aguarda 50ms para garantir que o React renderizou o campo vazio
+        // antes de chamar a animação pesada de fechar o teclado.
+        setTimeout(() => {
+            Keyboard.dismiss();
+        }, 50);
+    };
+
     const formatPeso = (val) => val ? `${val.toString().replace('.', ',')} kg` : '-';
 
     const normalizeText = (text) => {
@@ -115,15 +130,12 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
             .toLowerCase();
     };
 
-    // --- LÓGICA DE FILTRO ATUALIZADA ---
     const filterItems = (items) => {
         if (!searchText) return items;
 
         const searchTerms = normalizeText(searchText).split(' ').filter(t => t.length > 0);
         
         return items.filter(item => {
-            // Processa a lista de códigos extras (se houver)
-            // Ex: "789123, 789456" -> "789123 789456" para facilitar a busca
             const listaBarrasLimpa = item.lista_barras 
                 ? item.lista_barras.replace(/,/g, ' ') 
                 : '';
@@ -168,7 +180,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
     const isStatusD = details.status_conf === 'D';
     const isStatusE = details.status_conf === 'E';
-    
     const isOwner = userSession?.codusu && details.cod_usuario === userSession.codusu;
     const shouldShowHeader = !isStatusE || (isStatusE && !isOwner);
     const showConferidos = !searchText && itensConferidos.length > 0;
@@ -212,21 +223,29 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     <Text style={styles.navTitle}>Detalhes do Romaneio</Text>
                 </View>
 
-                <View style={styles.searchInputContainer}>
-                    <Ionicons name="search" size={20} color={colors.textLight} style={{ marginRight: 8 }} />
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Filtrar por nome, código, EAN..."
-                        placeholderTextColor={colors.textLight}
-                        value={searchText}
-                        onChangeText={setSearchText}
-                        autoCapitalize="characters"
-                    />
-                    {searchText.length > 0 && (
-                        <AnimatedButton onPress={() => setSearchText('')}>
-                            <Ionicons name="close-circle" size={20} color={colors.textLight} />
-                        </AnimatedButton>
-                    )}
+                {/* Linha de Busca */}
+                <View style={styles.searchRow}>
+                    <View style={styles.searchInputContainer}>
+                        <Ionicons name="search" size={20} color={colors.textLight} style={{ marginRight: 8 }} />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Filtrar por nome, código, EAN..."
+                            placeholderTextColor={colors.textLight}
+                            value={searchText}
+                            onChangeText={setSearchText}
+                            autoCapitalize="characters"
+                        />
+                    </View>
+
+                    {/* Botão de Limpar Quadrado e Customizado */}
+                    <AnimatedButton onPress={handleClearSearch} style={styles.squareClearButton}>
+                        {/* Ícone usa uma cor FIXA (vermelho escuro) para não depender do tema */}
+                        <Ionicons 
+                            name="close" 
+                            size={28} 
+                            color="#D32F2F"  
+                        />
+                    </AnimatedButton>
                 </View>
             </View>
 
@@ -410,7 +429,13 @@ const getStyles = (colors) => StyleSheet.create({
         fontWeight: 'bold',
         color: colors.white,
     },
+    searchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
     searchInputContainer: {
+        flex: 1, 
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: colors.white,
@@ -422,6 +447,17 @@ const getStyles = (colors) => StyleSheet.create({
         flex: 1,
         color: colors.black || '#000', 
         fontSize: 16,
+    },
+    // Estilo Atualizado do Botão de Limpar
+    squareClearButton: {
+        width: 45,
+        height: 45,
+        // Cor fixa (Cinza bem claro) para diferenciar do tema
+        backgroundColor: '#F5F5F5', 
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 2, // Sombra leve para destacar
     },
     scrollContent: {
         padding: 15,
