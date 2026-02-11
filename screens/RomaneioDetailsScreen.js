@@ -99,16 +99,36 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
     const formatPeso = (val) => val ? `${val.toString().replace('.', ',')} kg` : '-';
 
+    // --- FUNÇÃO DE NORMALIZAÇÃO DE TEXTO ---
+    // Remove acentos (ex: Ã -> A, é -> e) e converte para minúsculas
+    const normalizeText = (text) => {
+        if (!text) return '';
+        return text
+            .toString()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
+    };
+
+    // --- LÓGICA DE FILTRO AVANÇADA ---
     const filterItems = (items) => {
         if (!searchText) return items;
-        const lowerSearch = searchText.toLowerCase();
+
+        // Quebra a busca em termos (ex: "feij pre" -> ["feij", "pre"])
+        const searchTerms = normalizeText(searchText).split(' ').filter(t => t.length > 0);
         
-        return items.filter(item => 
-            (item.descricao && item.descricao.toLowerCase().includes(lowerSearch)) ||
-            (item.codigo_produto && item.codigo_produto.toString().includes(lowerSearch)) ||
-            (item.referencia && item.referencia.toString().includes(lowerSearch)) || 
-            (item.codigo_barras_4_digitos && item.codigo_barras_4_digitos.toString().includes(lowerSearch))
-        );
+        return items.filter(item => {
+            // Concatena todos os campos pesquisáveis em uma única string normalizada
+            const itemData = normalizeText(`
+                ${item.descricao || ''} 
+                ${item.codigo_produto || ''} 
+                ${item.referencia || ''} 
+                ${item.codigo_barras_4_digitos || ''}
+            `);
+
+            // Verifica se TODOS os termos digitados estão presentes nos dados do item
+            return searchTerms.every(term => itemData.includes(term));
+        });
     };
 
     if (loading && !details) {
@@ -186,7 +206,7 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                         placeholderTextColor={colors.textLight}
                         value={searchText}
                         onChangeText={setSearchText}
-                        autoCapitalize="characters"
+                        autoCapitalize="characters" // Mantém maiúsculas no teclado visualmente, mas o filtro ignora
                     />
                     {searchText.length > 0 && (
                         <AnimatedButton onPress={() => setSearchText('')}>
@@ -323,6 +343,7 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 };
 
 const getStyles = (colors) => StyleSheet.create({
+    // ... estilos existentes
     container: {
         flex: 1,
         backgroundColor: colors.background,
@@ -339,7 +360,6 @@ const getStyles = (colors) => StyleSheet.create({
         alignItems: 'center',
         zIndex: 999,
     },
-    // NOVO HEADER CONTAINER
     headerContainer: {
         backgroundColor: colors.primary,
         paddingHorizontal: 20,
@@ -367,26 +387,24 @@ const getStyles = (colors) => StyleSheet.create({
         fontWeight: 'bold',
         color: colors.white,
     },
-    // Estilo da Busca no Topo
     searchInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: colors.white, // Fundo branco para destaque no header colorido
+        backgroundColor: colors.white,
         borderRadius: 10,
         paddingHorizontal: 12,
         height: 45,
     },
     searchInput: {
         flex: 1,
-        color: colors.text, // Texto escuro dentro do input branco
+        // CORRIGIDO: Define a cor do texto digitado explicitamente como preto (ou a cor do tema, se preto)
+        color: colors.black || '#000', 
         fontSize: 16,
     },
-    
     scrollContent: {
         padding: 15,
-        paddingTop: 20, // Espaço extra no topo do scroll
+        paddingTop: 20,
     },
-    // ... (Demais estilos mantidos iguais)
     summaryCard: {
         backgroundColor: colors.cardBackground,
         borderRadius: 16,
