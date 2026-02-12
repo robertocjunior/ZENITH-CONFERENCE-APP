@@ -2,60 +2,56 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Modal, StyleSheet, Animated, Easing } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
-import { SIZES } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import AnimatedButton from './AnimatedButton';
 
-const AUTO_CLOSE_DURATION = 2000; // 1.5 segundos
+const AUTO_CLOSE_DURATION = 2000; // 2 segundos para fechar
 
 const SuccessModal = ({ visible, title, message, onClose }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
 
-    const [isModalVisible, setIsModalVisible] = useState(visible);
+    const [shouldRender, setShouldRender] = useState(visible);
     
-    // Animações de Entrada/Saída do Modal
+    // Animações
     const modalOpacity = useRef(new Animated.Value(0)).current;
     const modalScale = useRef(new Animated.Value(0.9)).current;
-    
-    // Animação de Progresso do Botão
     const progress = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         let timerAnimation;
 
         if (visible) {
-            setIsModalVisible(true);
-            progress.setValue(0); // Reseta a barra
+            setShouldRender(true);
+            progress.setValue(0);
 
-            // 1. Animação de Entrada
+            // 1. Entrada
             Animated.parallel([
                 Animated.timing(modalOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
                 Animated.spring(modalScale, { toValue: 1, friction: 6, useNativeDriver: true })
             ]).start();
 
-            // 2. Inicia o Timer visual no botão
+            // 2. Timer Barra de Progresso
             timerAnimation = Animated.timing(progress, {
                 toValue: 1,
                 duration: AUTO_CLOSE_DURATION,
                 easing: Easing.linear,
-                useNativeDriver: false // Width não suporta native driver
+                useNativeDriver: false 
             });
 
             timerAnimation.start(({ finished }) => {
-                // Se a animação terminou sozinha (ninguém clicou), fecha o modal
                 if (finished) {
                     handleClose();
                 }
             });
 
         } else {
-            // Animação de Saída
+            // Saída
             Animated.parallel([
                  Animated.timing(modalOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
                  Animated.timing(modalScale, { toValue: 0.9, duration: 200, useNativeDriver: true })
             ]).start(() => {
-                setIsModalVisible(false);
+                setShouldRender(false);
             });
         }
 
@@ -65,22 +61,22 @@ const SuccessModal = ({ visible, title, message, onClose }) => {
     }, [visible]);
 
     const handleClose = () => {
-        // Para a animação atual se for clique manual e chama o onClose
         progress.stopAnimation(); 
-        onClose();
+        onClose && onClose();
     };
 
-    // Interpolação para a largura da barra de progresso (0% a 100%)
     const progressWidth = progress.interpolate({
         inputRange: [0, 1],
         outputRange: ['0%', '100%']
     });
 
+    if (!shouldRender) return null;
+
     return (
         <Modal
             animationType="none"
             transparent={true}
-            visible={isModalVisible}
+            visible={shouldRender}
             onRequestClose={handleClose}
             statusBarTranslucent={true}
         >
@@ -96,19 +92,11 @@ const SuccessModal = ({ visible, title, message, onClose }) => {
                     
                     <View style={styles.buttonRow}>
                         <AnimatedButton 
-                            style={[styles.button, styles.confirmButton]} 
+                            style={styles.button} 
                             onPress={handleClose}
                             activeOpacity={0.9}
                         >
-                            {/* Barra de Progresso (Fundo) */}
-                            <Animated.View 
-                                style={[
-                                    styles.progressBar, 
-                                    { width: progressWidth }
-                                ]} 
-                            />
-                            
-                            {/* Texto (Frente) */}
+                            <Animated.View style={[styles.progressBar, { width: progressWidth }]} />
                             <Text style={styles.buttonText}>OK</Text>
                         </AnimatedButton>
                     </View>
@@ -128,9 +116,9 @@ const getStyles = (colors) => StyleSheet.create({
     },
     modalContent: {
         width: '100%',
-        maxWidth: 340, // Largura um pouco menor para ficar mais elegante
+        maxWidth: 340,
         backgroundColor: colors.cardBackground,
-        borderRadius: 20, // Bordas mais arredondadas
+        borderRadius: 20,
         paddingVertical: 30,
         paddingHorizontal: 20,
         alignItems: 'center',
@@ -142,7 +130,6 @@ const getStyles = (colors) => StyleSheet.create({
     },
     iconContainer: {
         marginBottom: 15,
-        // Opcional: Sombra no ícone
         shadowColor: colors.success,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.5,
@@ -165,44 +152,33 @@ const getStyles = (colors) => StyleSheet.create({
     },
     buttonRow: {
         width: '100%',
-        alignItems: 'center', // Centraliza o botão
+        alignItems: 'center',
     },
     button: {
         width: '100%',
         height: 50,
-        borderRadius: 25, // Botão pílula
-        overflow: 'hidden', // Importante para a barra de progresso não vazar
-        backgroundColor: colors.inputBackground, // Cor de fundo do "trilho"
+        borderRadius: 25,
+        overflow: 'hidden',
+        backgroundColor: colors.inputBackground,
         justifyContent: 'center',
         alignItems: 'center',
         position: 'relative',
         borderWidth: 1,
-        borderColor: colors.primary,
-    },
-    confirmButton: {
-        // Removemos o background fixo aqui para usar o progress bar
+        borderColor: colors.success, // Borda verde para combinar
     },
     progressBar: {
         position: 'absolute',
         left: 0,
         top: 0,
         bottom: 0,
-        backgroundColor: colors.primary, // A cor que vai preencher
-        opacity: 0.8, // Leve transparência para dar um efeito bonito
+        backgroundColor: colors.success,
+        opacity: 0.2, // Fundo verde claro preenchendo
     },
     buttonText: {
-        color: colors.text, // Começa com a cor do texto normal (contraste com inputBackground)
-        // Se quiser que o texto fique branco quando cheio, precisaria de uma técnica de mascara complexa,
-        // mas usar uma cor que contraste com ambos (ex: Branco com sombra ou Preto) resolve.
-        // Vamos forçar branco se o primary for escuro, ou usar zIndex.
-        color: colors.text, // Ajuste para 'white' se seu primary for escuro e inputBackground claro
+        color: colors.success, // Texto verde
         fontSize: 16,
         fontWeight: 'bold',
-        zIndex: 1, // Garante que o texto fique sobre a barra
-        // Pequena sombra para garantir leitura em qualquer fundo
-        textShadowColor: 'rgba(0,0,0,0.1)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 1
+        zIndex: 1,
     },
 });
 

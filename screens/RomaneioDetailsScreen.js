@@ -6,15 +6,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { SIZES } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context'; 
-// ADICIONADO: Importar finishConference
 import { fetchRomaneioDetails, startConferencia, conferirItem, finishConference } from '../api'; 
 import RomaneioItemCard from '../components/RomaneioItemCard';
 import AnimatedButton from '../components/common/AnimatedButton';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import ItemConferenceModal from '../components/modals/ItemConferenceModal';
 import BarcodeScannerModal from '../components/modals/BarcodeScannerModal'; 
-// ADICIONADO: Importar FinishConferenceModal
 import FinishConferenceModal from '../components/modals/FinishConferenceModal';
+import SuccessModal from '../components/common/SuccessModal'; // IMPORTADO
 import * as SystemUI from 'expo-system-ui';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -36,10 +35,12 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const [isConfirmVisible, setConfirmVisible] = useState(false);
     const [isItemModalVisible, setItemModalVisible] = useState(false);
     const [isScannerVisible, setScannerVisible] = useState(false);
-    // ADICIONADO: Estado para o modal de finalizar
     const [isFinishModalVisible, setFinishModalVisible] = useState(false);
-    const [selectedItem, setSelectedItem] = useState(null);
     
+    // NOVO ESTADO: Modal de Sucesso
+    const [isSuccessVisible, setSuccessVisible] = useState(false); 
+
+    const [selectedItem, setSelectedItem] = useState(null);
     const [itemActionLoading, setItemActionLoading] = useState(false);
 
     useFocusEffect(
@@ -82,31 +83,30 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         }
     };
 
-    // ADICIONADO: Handler para abrir modal de finalizar
     const handleFinishConferencePress = () => {
         setFinishModalVisible(true);
     };
 
-    // ADICIONADO: Handler para confirmar a finalização
     const confirmFinishConference = async (obs_fim) => {
         try {
             setActionLoading(true);
             await finishConference(details.nu_unico, obs_fim);
             setFinishModalVisible(false);
             
-            // Recarrega os detalhes para atualizar status (provavelmente mudará de 'E')
-            // Ou volta para a tela anterior com uma mensagem de sucesso
-            Alert.alert(
-                "Sucesso", 
-                "Conferência finalizada com sucesso!",
-                [{ text: "OK", onPress: () => navigation.goBack() }]
-            );
+            // AQUI: Abre o modal de sucesso em vez do Alert
+            setSuccessVisible(true);
+
         } catch (e) {
             setFinishModalVisible(false);
             Alert.alert('Erro', e.message || 'Não foi possível finalizar a conferência.');
         } finally {
             setActionLoading(false);
         }
+    };
+
+    const handleSuccessClose = () => {
+        setSuccessVisible(false);
+        navigation.goBack(); // Volta para a tela anterior ao fechar o sucesso
     };
 
     const handleItemPress = (item) => {
@@ -203,7 +203,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const itensConferidos = todosItens.filter(p => p.conferido === 'S');
     const itensPendentes = todosItens.filter(p => p.conferido !== 'S');
     
-    // Tudo conferido se tem itens e zero pendentes
     const isAllConferred = todosItens.length > 0 && itensPendentes.length === 0;
 
     const pendentesFiltrados = filterItems(itensPendentes);
@@ -214,7 +213,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const isStatusE = details.status_conf === 'E';
     const isOwner = userSession?.codusu && details.cod_usuario === userSession.codusu;
     
-    // Header visível se: Status D, ou (Status E e não dono), ou (Status E, dono E tudo conferido)
     const shouldShowHeader = !isStatusE || (isStatusE && !isOwner) || isAllConferred;
     
     const showConferidos = !searchText && itensConferidos.length > 0;
@@ -231,12 +229,19 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                 confirmText="Iniciar"
             />
 
-            {/* ADICIONADO: Modal de Finalizar Conferência */}
             <FinishConferenceModal
                 visible={isFinishModalVisible}
                 onClose={() => setFinishModalVisible(false)}
                 onConfirm={confirmFinishConference}
                 isLoading={actionLoading}
+            />
+
+            {/* MODAL DE SUCESSO */}
+            <SuccessModal
+                visible={isSuccessVisible}
+                title="Conferência Finalizada"
+                message="Todos os itens foram conferidos com sucesso."
+                onClose={handleSuccessClose}
             />
 
             <ItemConferenceModal
@@ -352,7 +357,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                             </View>
                         </View>
 
-                        {/* Botão de INICIAR (Aparece se Status D) */}
                         {isStatusD && (
                             <AnimatedButton 
                                 style={styles.startButton} 
@@ -363,10 +367,9 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                             </AnimatedButton>
                         )}
 
-                        {/* ADICIONADO: Botão de FINALIZAR (Aparece se Status E, Dono e Tudo Conferido) */}
                         {(isStatusE && isOwner && isAllConferred) && (
                             <AnimatedButton 
-                                style={[styles.startButton, { backgroundColor: colors.white }]} // Botão branco para destacar no fundo verde
+                                style={[styles.startButton, { backgroundColor: colors.white }]} 
                                 onPress={handleFinishConferencePress}
                             >
                                 <Ionicons name="checkmark-done-circle" size={24} color={colors.success} />
