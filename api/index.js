@@ -226,3 +226,11 @@ export const conferirItem = (nu_unico, num_reg, qtd_embarcada, obs = null) => {
 
     return authenticatedFetch('/conferir-item', body);
 };
+export const finishConference = (nu_unico, obs_fim = null) => {
+    const body = { nu_unico };
+    // Adiciona obs_fim apenas se existir e não for vazia
+    if (obs_fim && obs_fim.trim().length > 0) {
+        body.obs_fim = obs_fim;
+    }
+    return authenticatedFetch('/finalizar-conferencia', body);
+};

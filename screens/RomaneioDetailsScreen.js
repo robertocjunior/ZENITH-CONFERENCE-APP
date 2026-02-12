@@ -5,13 +5,16 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { SIZES } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { fetchRomaneioDetails, startConferencia, conferirItem } from '../api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; 
+// ADICIONADO: Importar finishConference
+import { fetchRomaneioDetails, startConferencia, conferirItem, finishConference } from '../api'; 
 import RomaneioItemCard from '../components/RomaneioItemCard';
 import AnimatedButton from '../components/common/AnimatedButton';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import ItemConferenceModal from '../components/modals/ItemConferenceModal';
-import BarcodeScannerModal from '../components/modals/BarcodeScannerModal';
+import BarcodeScannerModal from '../components/modals/BarcodeScannerModal'; 
+// ADICIONADO: Importar FinishConferenceModal
+import FinishConferenceModal from '../components/modals/FinishConferenceModal';
 import * as SystemUI from 'expo-system-ui';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -20,21 +23,23 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const { userSession } = useAuth();
     const styles = getStyles(colors);
     const { romaneioId } = route.params;
-
-    const insets = useSafeAreaInsets();
+    
+    const insets = useSafeAreaInsets(); 
 
     const [details, setDetails] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
-
+    
     const [searchText, setSearchText] = useState('');
 
     const [isConfirmVisible, setConfirmVisible] = useState(false);
     const [isItemModalVisible, setItemModalVisible] = useState(false);
     const [isScannerVisible, setScannerVisible] = useState(false);
+    // ADICIONADO: Estado para o modal de finalizar
+    const [isFinishModalVisible, setFinishModalVisible] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
-
+    
     const [itemActionLoading, setItemActionLoading] = useState(false);
 
     useFocusEffect(
@@ -77,10 +82,34 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         }
     };
 
+    // ADICIONADO: Handler para abrir modal de finalizar
+    const handleFinishConferencePress = () => {
+        setFinishModalVisible(true);
+    };
+
+    // ADICIONADO: Handler para confirmar a finalização
+    const confirmFinishConference = async (obs_fim) => {
+        try {
+            setActionLoading(true);
+            await finishConference(details.nu_unico, obs_fim);
+            setFinishModalVisible(false);
+            
+            // Recarrega os detalhes para atualizar status (provavelmente mudará de 'E')
+            // Ou volta para a tela anterior com uma mensagem de sucesso
+            Alert.alert(
+                "Sucesso", 
+                "Conferência finalizada com sucesso!",
+                [{ text: "OK", onPress: () => navigation.goBack() }]
+            );
+        } catch (e) {
+            setFinishModalVisible(false);
+            Alert.alert('Erro', e.message || 'Não foi possível finalizar a conferência.');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     const handleItemPress = (item) => {
-        // Permite abrir se não estiver 100% conferido (para correções) ou se não for o dono
-        // Ajuste conforme regra de negócio: se 100% e dono, talvez bloquear?
-        // Por enquanto, mantém lógica original
         if (!shouldShowHeader && item.conferido !== 'S') {
             setSelectedItem(item);
             setItemModalVisible(true);
@@ -91,9 +120,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         try {
             setItemActionLoading(true);
             await conferirItem(details.nu_unico, item.num_reg, qtd_embarcada, obs);
+            
             setItemModalVisible(false);
             setSelectedItem(null);
-
+            
             setSearchText('');
             Keyboard.dismiss();
 
@@ -132,10 +162,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
         if (!searchText) return items;
 
         const searchTerms = normalizeText(searchText).split(' ').filter(t => t.length > 0);
-
+        
         return items.filter(item => {
-            const listaBarrasLimpa = item.lista_barras
-                ? item.lista_barras.replace(/,/g, ' ')
+            const listaBarrasLimpa = item.lista_barras 
+                ? item.lista_barras.replace(/,/g, ' ') 
                 : '';
 
             const itemData = normalizeText(`
@@ -172,8 +202,8 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const todosItens = details.produtos || [];
     const itensConferidos = todosItens.filter(p => p.conferido === 'S');
     const itensPendentes = todosItens.filter(p => p.conferido !== 'S');
-
-    // --- LÓGICA DE 100% CONFERIDO ---
+    
+    // Tudo conferido se tem itens e zero pendentes
     const isAllConferred = todosItens.length > 0 && itensPendentes.length === 0;
 
     const pendentesFiltrados = filterItems(itensPendentes);
@@ -183,10 +213,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
     const isStatusD = details.status_conf === 'D';
     const isStatusE = details.status_conf === 'E';
     const isOwner = userSession?.codusu && details.cod_usuario === userSession.codusu;
-
-    // Header aparece se: Não for 'E', OU (for 'E' mas não é dono), OU (for 'E', dono E tudo conferido)
+    
+    // Header visível se: Status D, ou (Status E e não dono), ou (Status E, dono E tudo conferido)
     const shouldShowHeader = !isStatusE || (isStatusE && !isOwner) || isAllConferred;
-
+    
     const showConferidos = !searchText && itensConferidos.length > 0;
 
     return (
@@ -199,6 +229,14 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                 onConfirm={confirmStartConference}
                 isLoading={actionLoading}
                 confirmText="Iniciar"
+            />
+
+            {/* ADICIONADO: Modal de Finalizar Conferência */}
+            <FinishConferenceModal
+                visible={isFinishModalVisible}
+                onClose={() => setFinishModalVisible(false)}
+                onConfirm={confirmFinishConference}
+                isLoading={actionLoading}
             />
 
             <ItemConferenceModal
@@ -242,19 +280,22 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     </View>
 
                     <AnimatedButton onPress={handleClearSearch} style={styles.squareClearButton}>
-                        <Ionicons name="close" size={28} color="#D32F2F" />
+                        <Ionicons 
+                            name="close" 
+                            size={28} 
+                            color="#D32F2F" 
+                        />
                     </AnimatedButton>
                 </View>
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-
+                
                 {shouldShowHeader && (
                     <View style={[
-                        styles.summaryCard,
+                        styles.summaryCard, 
                         isStatusE && styles.summaryCardStatusE,
-                        // Se tudo conferido, aplica estilo de sucesso (verde)
-                        isAllConferred && styles.summaryCardSuccess
+                        isAllConferred && styles.summaryCardSuccess 
                     ]}>
                         <View style={styles.summaryRow}>
                             <View>
@@ -262,10 +303,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                                 <Text style={[styles.romaneioBig, isAllConferred && styles.textWhite]}>#{details.fechamento}</Text>
                             </View>
                             <View style={[styles.dateBadge, isAllConferred && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                                <Ionicons
-                                    name="calendar-outline"
-                                    size={16}
-                                    color={isAllConferred ? colors.white : colors.primary}
+                                <Ionicons 
+                                    name="calendar-outline" 
+                                    size={16} 
+                                    color={isAllConferred ? colors.white : colors.primary} 
                                 />
                                 <Text style={[styles.dateText, isAllConferred && styles.textWhite]}>{details.data}</Text>
                             </View>
@@ -286,7 +327,6 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                             <View style={[styles.userInfoContainer, isAllConferred && { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
                                 <View style={[styles.userBadge, isAllConferred && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
                                     <Ionicons name="person" size={12} color={colors.white} />
-                                    {/* Texto muda se finalizado */}
                                     <Text style={styles.userBadgeText}>
                                         {isAllConferred ? "CONFERÊNCIA CONCLUÍDA" : "EM CONFERÊNCIA"}
                                     </Text>
@@ -312,13 +352,25 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                             </View>
                         </View>
 
+                        {/* Botão de INICIAR (Aparece se Status D) */}
                         {isStatusD && (
-                            <AnimatedButton
-                                style={styles.startButton}
+                            <AnimatedButton 
+                                style={styles.startButton} 
                                 onPress={handleStartConferencePress}
                             >
                                 <Ionicons name="play-circle-outline" size={24} color={colors.white} />
                                 <Text style={styles.startButtonText}>INICIAR CONFERÊNCIA</Text>
+                            </AnimatedButton>
+                        )}
+
+                        {/* ADICIONADO: Botão de FINALIZAR (Aparece se Status E, Dono e Tudo Conferido) */}
+                        {(isStatusE && isOwner && isAllConferred) && (
+                            <AnimatedButton 
+                                style={[styles.startButton, { backgroundColor: colors.white }]} // Botão branco para destacar no fundo verde
+                                onPress={handleFinishConferencePress}
+                            >
+                                <Ionicons name="checkmark-done-circle" size={24} color={colors.success} />
+                                <Text style={[styles.startButtonText, { color: colors.success }]}>FINALIZAR CONFERÊNCIA</Text>
                             </AnimatedButton>
                         )}
                     </View>
@@ -335,10 +387,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Notas Próprias</Text>
                         {pendentesProprias.map((item, index) => (
-                            <RomaneioItemCard
-                                key={`propria-${index}`}
+                            <RomaneioItemCard 
+                                key={`propria-${index}`} 
                                 item={item}
-                                onPress={handleItemPress}
+                                onPress={handleItemPress} 
                             />
                         ))}
                     </View>
@@ -348,10 +400,10 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Notas de Terceiros</Text>
                         {pendentesTerceiros.map((item, index) => (
-                            <RomaneioItemCard
-                                key={`terceiro-${index}`}
+                            <RomaneioItemCard 
+                                key={`terceiro-${index}`} 
                                 item={item}
-                                onPress={handleItemPress}
+                                onPress={handleItemPress} 
                             />
                         ))}
                     </View>
@@ -370,25 +422,21 @@ const RomaneioDetailsScreen = ({ route, navigation }) => {
 
                         <View style={styles.section}>
                             {itensConferidos.map((item, index) => (
-                                <RomaneioItemCard
-                                    key={`conferido-${index}`}
+                                <RomaneioItemCard 
+                                    key={`conferido-${index}`} 
                                     item={item}
-                                    // Adicione a prop isAllConferred abaixo
-                                    isAllConferred={isAllConferred}
-                                    suppressDoneStyle={isAllConferred}
+                                    isFinalized={isAllConferred} 
                                 />
                             ))}
                         </View>
                     </View>
                 )}
 
-                <View style={{ height: 80 }} />
+                <View style={{ height: 80 }} /> 
             </ScrollView>
 
-            {/* BOTÃO FLUTUANTE (FAB) - CAMERA */}
-            {/* Esconde se tudo estiver conferido (!isAllConferred) */}
             {(isStatusE && isOwner && !isAllConferred) && (
-                <AnimatedButton
+                <AnimatedButton 
                     style={[styles.fab, { bottom: 20 + insets.bottom }]}
                     onPress={() => setScannerVisible(true)}
                 >
@@ -450,7 +498,7 @@ const getStyles = (colors) => StyleSheet.create({
         gap: 10,
     },
     searchInputContainer: {
-        flex: 1,
+        flex: 1, 
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: colors.white,
@@ -460,13 +508,13 @@ const getStyles = (colors) => StyleSheet.create({
     },
     searchInput: {
         flex: 1,
-        color: colors.black || '#000',
+        color: colors.black || '#000', 
         fontSize: 16,
     },
     squareClearButton: {
         width: 45,
         height: 45,
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#F5F5F5', 
         borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
@@ -494,13 +542,11 @@ const getStyles = (colors) => StyleSheet.create({
         borderColor: colors.cardStatusEBorder,
         borderWidth: 1.5,
     },
-    // NOVO ESTILO: Cabeçalho Verde (Sucesso)
     summaryCardSuccess: {
-        backgroundColor: colors.success, // Verde
+        backgroundColor: colors.success, 
         borderColor: colors.success,
         borderWidth: 1.5,
     },
-    // Helper para texto branco no cabeçalho verde
     textWhite: {
         color: colors.white,
     },
@@ -683,7 +729,7 @@ const getStyles = (colors) => StyleSheet.create({
     },
     fab: {
         position: 'absolute',
-        alignSelf: 'center',
+        alignSelf: 'center', 
         width: 70,
         height: 70,
         borderRadius: 35,
